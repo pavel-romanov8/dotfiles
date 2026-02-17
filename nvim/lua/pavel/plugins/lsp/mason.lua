@@ -25,60 +25,19 @@ return {
 		})
 
 		mason_lspconfig.setup({
-			-- list of servers for mason to install
-			ensure_installed = {
-				"ts_ls",
-				"html",
-				"cssls",
-				"css_variables",
-				"cssmodules_ls",
-				"tailwindcss",
-				"svelte",
-				"lua_ls",
-				"graphql",
-				"emmet_ls",
-				"prismals",
-				"ruff",
-
-				"ast_grep",
-
-				"angularls",
-				"astro",
-				"mdx_analyzer",
-
-				"ansiblels",
-				"terraformls",
-
-				"docker_compose_language_service",
-				"dockerls",
-
-				"gopls",
-				"golangci_lint_ls",
-			},
+			automatic_installation = true,
 		})
 
 		mason_tool_installer.setup({
-			-- list of tools for mason to install
 			ensure_installed = {
 				"prettierd",
 				"eslint_d",
-
 				"stylua",
-
 				"hadolint",
-
 				"tfsec",
 				"tflint",
-
-				"goimports-reviser",
-				"gofumpt",
-				"delve",
-				"golangci-lint",
-				"revive",
-				"golines",
-				"nilaway",
-				"iferr",
-				"gomodifytags",
+				-- Go tools: install manually via :MasonInstall when needed
+				-- goimports-reviser gofumpt delve golangci-lint revive golines nilaway iferr gomodifytags
 			},
 		})
 	end,

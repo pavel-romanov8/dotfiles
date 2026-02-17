@@ -42,7 +42,7 @@ Each plugin configuration file returns a Lazy.nvim plugin specification table.
 1. **Lazy Loading**: Plugins are loaded on specific events (VeryLazy, BufReadPre) to optimize startup time
 2. **Modular Plugin Configs**: Each plugin has its own file in `lua/pavel/plugins/`
 3. **LSP via Mason**: Language servers are automatically installable through Mason.nvim
-4. **AI Integration**: Multiple AI assistants configured (Avante with Gemini, Windsurf with Codeium, Copilot)
+4. **AI Integration**: Codeium configured via nvim-cmp
 
 ## Configured Language Support
 
