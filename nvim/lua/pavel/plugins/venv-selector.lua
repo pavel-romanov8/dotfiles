@@ -9,7 +9,7 @@ return {
 		-- Auto select single venv in workspace
 		auto_refresh = true,
 	},
-	event = "VeryLazy", -- Optional: load when needed
+	ft = "python", -- Load only for Python buffers
 	keys = {
 		{ ",v", "<cmd>VenvSelect<cr>", desc = "Select Python virtualenv" },
 		{ ",vc", "<cmd>VenvSelectCached<cr>", desc = "Select cached Python virtualenv" },

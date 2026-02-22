@@ -2,46 +2,33 @@ return {
 	"nvim-treesitter/nvim-treesitter",
 	branch = "main",
 	build = ":TSUpdate",
-	lazy = false,
+	event = { "BufReadPost", "BufNewFile" },
 	config = function()
-		require("nvim-treesitter").setup({})
+		local treesitter = require("nvim-treesitter")
+		treesitter.setup({})
 
-		-- Install parsers (replaces ensure_installed)
-		local parsers = {
-			"json",
-			"javascript",
-			"typescript",
-			"tsx",
-			"yaml",
-			"html",
-			"css",
-			"prisma",
-			"markdown",
-			"markdown_inline",
-			"svelte",
-			"graphql",
-			"bash",
-			"lua",
-			"vim",
-			"dockerfile",
-			"query",
-			"vimdoc",
-			"c",
-			"angular",
-			"vue",
-			"go",
-			"terraform",
-			"toml",
-			"astro",
-		}
-		vim.schedule(function()
-			require("nvim-treesitter").install(parsers)
-		end)
+		local installing = {}
+		local function ensure_parser(lang)
+			if lang == "" or pcall(vim.treesitter.language.add, lang) or installing[lang] then
+				return
+			end
+
+			installing[lang] = true
+			vim.schedule(function()
+				local ok = pcall(treesitter.install, lang)
+				if not ok then
+					vim.notify("Failed to install treesitter parser: " .. lang, vim.log.levels.WARN)
+				end
+				installing[lang] = nil
+			end)
+		end
 
 		-- Enable treesitter highlighting (replaces highlight.enable)
 		vim.api.nvim_create_autocmd("FileType", {
 			callback = function(args)
-				pcall(vim.treesitter.start, args.buf)
+				local lang = vim.treesitter.language.get_lang(args.match) or args.match
+				ensure_parser(lang)
+				pcall(vim.treesitter.start, args.buf, lang)
 			end,
 		})
 
