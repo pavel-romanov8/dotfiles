@@ -9,10 +9,40 @@ return {
   config = function()
     local telescope = require("telescope")
     local actions = require("telescope.actions")
+    local telescope_config = require("telescope.config")
+    local vimgrep_arguments = vim.deepcopy(telescope_config.values.vimgrep_arguments)
+
+    local ignore_globs = {
+      "!**/.git/**",
+      "!**/node_modules/**",
+      "!**/build*/**",
+      "!**/dist/**",
+      "!**/.next/**",
+      "!**/coverage/**",
+      "!**/target/**",
+      "!**/out/**",
+    }
+
+    for _, glob in ipairs(ignore_globs) do
+      table.insert(vimgrep_arguments, "--glob")
+      table.insert(vimgrep_arguments, glob)
+    end
 
     telescope.setup({
       defaults = {
         path_display = { "smart" },
+        file_ignore_patterns = {
+          "^%.git/",
+          "node_modules/",
+          "build/",
+          "build[^/]*/",
+          "dist/",
+          "^%.next/",
+          "coverage/",
+          "target/",
+          "out/",
+        },
+        vimgrep_arguments = vimgrep_arguments,
         mappings = {
           i = {
             ["<C-k>"] = actions.move_selection_previous, -- move to prev result
@@ -35,4 +65,3 @@ return {
     keymap.set("n", "<leader>ft", "<cmd>TodoTelescope<cr>", { desc = "Find todos" })
   end,
 }
-
