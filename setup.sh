@@ -5,7 +5,7 @@ DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_DIR="$HOME/.config"
 
 # Add config directory names here as you add more tools
-CONFIGS=(nvim yazi)
+CONFIGS=(nvim yazi wezterm)
 
 mkdir -p "$CONFIG_DIR"
 
