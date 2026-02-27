@@ -1,42 +1,50 @@
 return {
 	"nvim-treesitter/nvim-treesitter",
-	branch = "main",
+	branch = "master",
 	build = ":TSUpdate",
 	event = { "BufReadPost", "BufNewFile" },
 	config = function()
-		local treesitter = require("nvim-treesitter")
-		treesitter.setup({})
-
-		local installing = {}
-		local function ensure_parser(lang)
-			if lang == "" or pcall(vim.treesitter.language.add, lang) or installing[lang] then
-				return
-			end
-
-			installing[lang] = true
-			vim.schedule(function()
-				local ok = pcall(treesitter.install, lang)
-				if not ok then
-					vim.notify("Failed to install treesitter parser: " .. lang, vim.log.levels.WARN)
-				end
-				installing[lang] = nil
-			end)
-		end
-
-		-- Enable treesitter highlighting (replaces highlight.enable)
-		vim.api.nvim_create_autocmd("FileType", {
-			callback = function(args)
-				local lang = vim.treesitter.language.get_lang(args.match) or args.match
-				ensure_parser(lang)
-				pcall(vim.treesitter.start, args.buf, lang)
-			end,
-		})
-
-		-- Enable treesitter indentation (replaces indent.enable)
-		vim.api.nvim_create_autocmd("FileType", {
-			callback = function()
-				vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
-			end,
+		require("nvim-treesitter.configs").setup({
+			ensure_installed = {
+				"bash",
+				"c",
+				"css",
+				"dockerfile",
+				"go",
+				"gomod",
+				"gosum",
+				"gowork",
+				"graphql",
+				"html",
+				"javascript",
+				"jsdoc",
+				"json",
+				"jsonc",
+				"lua",
+				"luadoc",
+				"markdown",
+				"markdown_inline",
+				"prisma",
+				"python",
+				"query",
+				"regex",
+				"scss",
+				"svelte",
+				"terraform",
+				"toml",
+				"tsx",
+				"typescript",
+				"vim",
+				"vimdoc",
+				"yaml",
+			},
+			auto_install = true,
+			highlight = {
+				enable = true,
+			},
+			indent = {
+				enable = true,
+			},
 		})
 	end,
 }
