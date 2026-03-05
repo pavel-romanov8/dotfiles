@@ -51,14 +51,14 @@ config.color_schemes = {
     selection_fg = "#24292e",
     selection_bg = "#e1e3e5",
     ansi = {
-      "#ffffff",
+      "#24292e",
       "#de2c2e",
       "#18654b",
       "#dbab09",
       "#0366d6",
       "#8263eb",
       "#0598bc",
-      "#24292e",
+      "#4c5156",
     },
     brights = {
       "#c7c9cb",
