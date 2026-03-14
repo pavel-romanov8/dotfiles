@@ -1,6 +1,21 @@
+local function has_cvs_project()
+  if vim.fn.executable("cvs") ~= 1 then
+    return false
+  end
+
+  local root_markers = vim.fs.find("CVS", {
+    path = vim.fn.getcwd(),
+    type = "directory",
+    upward = true,
+  })
+
+  return #root_markers > 0
+end
+
 return {
-  "mrchnk/cvs.nvim",
-  commit = "8f5c68a6dbf1084c183e2335e9e1915e41e89337",
+  "pavel-romanov8/cvs-nvim",
+  commit = "f1182bccae24d41661b6afb19c30f4ea68acb76d",
+  cond = has_cvs_project,
   cmd = {
     "CVSLog",
     "CVSDiff",
