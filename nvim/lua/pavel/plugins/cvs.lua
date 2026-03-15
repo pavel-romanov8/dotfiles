@@ -14,7 +14,7 @@ end
 
 return {
   "pavel-romanov8/cvs-nvim",
-  commit = "f1182bccae24d41661b6afb19c30f4ea68acb76d",
+  branch = "main",
   cond = has_cvs_project,
   cmd = {
     "CvsStatus",
