@@ -154,7 +154,7 @@ return {
 			},
 		})
 
-		-- Ruff (Python linting/formatting) - disable hover in favor of ty
+		-- Ruff (Python linting/formatting) - disable hover in favor of pyright
 		vim.lsp.config("ruff", {
 			capabilities = capabilities,
 			on_attach = function(client, bufnr)
@@ -162,16 +162,16 @@ return {
 			end,
 		})
 
-		-- ty (Python type checker) - requires Neovim 0.11+
-		vim.lsp.config("ty", {
-			cmd = { "ty", "server" },
-			filetypes = { "python" },
-			root_markers = { "pyproject.toml", ".git" },
+		-- Pyright handles Python navigation and references more reliably.
+		vim.lsp.config("pyright", {
+			capabilities = capabilities,
 			settings = {
-				ty = {
-					experimental = {
-						autoImport = true,
-						rename = true,
+				pyright = {
+					disableOrganizeImports = true,
+				},
+				python = {
+					analysis = {
+						autoImportCompletions = true,
 					},
 				},
 			},
@@ -206,7 +206,7 @@ return {
 		vim.lsp.enable({
 			-- Python
 			"ruff",
-			"ty",
+			"pyright",
 			-- TypeScript/JavaScript
 			"ts_ls",
 			-- Web

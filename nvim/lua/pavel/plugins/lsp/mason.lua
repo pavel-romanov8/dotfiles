@@ -30,6 +30,7 @@ return {
 
 		mason_tool_installer.setup({
 			ensure_installed = {
+				"pyright",
 				"prettierd",
 				"eslint_d",
 				"stylua",
