@@ -26,6 +26,7 @@ For tmux, it also creates `~/.tmux.conf` as a symlink to `~/.config/tmux/tmux.co
 - Config path in this repo: `wezterm/wezterm.lua`
 - Runtime path after setup: `~/.config/wezterm/wezterm.lua`
 - Font used by config: `MesloLGS Nerd Font Mono`
+- Light mode uses the custom `GitHub Light Readable` scheme. To test another built-in light scheme, launch WezTerm with `WEZTERM_LIGHT_SCHEME="Catppuccin Latte" wezterm start`.
 
 If you already have `~/.wezterm.lua`, remove it after confirming WezTerm is loading `~/.config/wezterm/wezterm.lua`.
 
