@@ -24,6 +24,8 @@ return {
     "CvsLog",
     "CvsAnnotate",
     "CvsConflicts",
+    "Cvs",
+    "Cdiffsplit",
   },
   dependencies = {
     "nvim-lua/plenary.nvim",
