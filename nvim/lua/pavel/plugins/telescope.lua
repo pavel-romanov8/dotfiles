@@ -12,36 +12,31 @@ return {
     local telescope_config = require("telescope.config")
     local vimgrep_arguments = vim.deepcopy(telescope_config.values.vimgrep_arguments)
 
-    local ignore_globs = {
-      "!**/.git/**",
-      "!**/node_modules/**",
-      "!**/build*/**",
-      "!**/dist/**",
-      "!**/.next/**",
-      "!**/coverage/**",
-      "!**/target/**",
-      "!**/out/**",
+    local ignored_directories = {
+      ".git",
+      "CVS",
+      "node_modules",
+      "build*",
+      "dist",
+      ".next",
+      "coverage",
+      "target",
+      "out",
     }
 
-    for _, glob in ipairs(ignore_globs) do
+    local find_command = { "fd", "--type", "f", "--color", "never" }
+
+    for _, directory in ipairs(ignored_directories) do
+      table.insert(find_command, "--exclude")
+      table.insert(find_command, directory)
+
       table.insert(vimgrep_arguments, "--glob")
-      table.insert(vimgrep_arguments, glob)
+      table.insert(vimgrep_arguments, "!**/" .. directory .. "/**")
     end
 
     telescope.setup({
       defaults = {
         path_display = { "smart" },
-        file_ignore_patterns = {
-          "^%.git/",
-          "node_modules/",
-          "build/",
-          "build[^/]*/",
-          "dist/",
-          "^%.next/",
-          "coverage/",
-          "target/",
-          "out/",
-        },
         vimgrep_arguments = vimgrep_arguments,
         mappings = {
           i = {
@@ -49,6 +44,11 @@ return {
             ["<C-j>"] = actions.move_selection_next, -- move to next result
             ["<C-q>"] = actions.send_selected_to_qflist + actions.open_qflist,
           },
+        },
+      },
+      pickers = {
+        find_files = {
+          find_command = find_command,
         },
       },
     })
