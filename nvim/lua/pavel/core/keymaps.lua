@@ -23,5 +23,18 @@ keymap.set("n", "<leader>tn", "<cmd>tabn<CR>", { desc = "Go to next tab" }) --  
 keymap.set("n", "<leader>tp", "<cmd>tabp<CR>", { desc = "Go to previous tab" }) --  go to previous tab
 keymap.set("n", "<leader>tf", "<cmd>tabnew %<CR>", { desc = "Open current buffer in new tab" }) --  move current buffer to new ta
 
+keymap.set("n", "<leader>yp", function()
+	local file = vim.api.nvim_buf_get_name(0)
+	if file == "" then
+		vim.notify("Current buffer has no file path", vim.log.levels.WARN)
+		return
+	end
+
+	local root = vim.uv.cwd()
+	local path = vim.fs.relpath(root, file) or file
+	vim.fn.setreg("+", path)
+	vim.notify("Copied: " .. path)
+end, { desc = "Copy project-relative file path" })
+
 -- terminal mode keypams
 keymap.set("t", "<Esc><Esc>", "<C-\\><C-n>", { noremap = true, silent = true, desc = "Escape terminal mode" })
