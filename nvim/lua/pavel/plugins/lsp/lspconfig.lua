@@ -157,6 +157,7 @@ return {
 		-- Ruff (Python linting/formatting) - disable hover in favor of pyright
 		vim.lsp.config("ruff", {
 			capabilities = capabilities,
+			cmd = { vim.fn.stdpath("data") .. "/mason/bin/ruff", "server" },
 			on_attach = function(client, bufnr)
 				client.server_capabilities.hoverProvider = false
 			end,

@@ -22,8 +22,10 @@ return {
 
 		local lspkind = require("lspkind")
 
-		-- loads vscode style snippets from installed plugins (e.g. friendly-snippets)
-		require("luasnip.loaders.from_vscode").lazy_load()
+		-- Only scan the snippet plugin; other plugins may have unrelated package.json files.
+		require("luasnip.loaders.from_vscode").lazy_load({
+			paths = { vim.fn.stdpath("data") .. "/lazy/friendly-snippets" },
+		})
 
 		cmp.setup({
 			completion = {

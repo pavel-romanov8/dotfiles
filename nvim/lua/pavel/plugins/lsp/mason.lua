@@ -31,6 +31,7 @@ return {
 		mason_tool_installer.setup({
 			ensure_installed = {
 				"pyright",
+				"ruff",
 				"prettierd",
 				"eslint_d",
 				"stylua",

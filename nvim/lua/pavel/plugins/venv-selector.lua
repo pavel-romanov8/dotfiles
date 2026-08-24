@@ -5,10 +5,7 @@ return {
 		"nvim-telescope/telescope.nvim",
 		"mfussenegger/nvim-dap-python",
 	},
-	opts = {
-		-- Auto select single venv in workspace
-		auto_refresh = true,
-	},
+	opts = {},
 	ft = "python", -- Load only for Python buffers
 	keys = {
 		{ ",v", "<cmd>VenvSelect<cr>", desc = "Select Python virtualenv" },

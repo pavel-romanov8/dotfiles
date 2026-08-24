@@ -21,6 +21,35 @@ This script symlinks each folder from this repo into `~/.config/<name>`.
 
 For tmux, it also creates `~/.tmux.conf` as a symlink to `~/.config/tmux/tmux.conf` so the config works on machines that still expect the legacy path.
 
+## Updating another machine
+
+Commit and push changes on the source machine, then run:
+
+```bash
+cd ~/dotfiles
+git pull --ff-only
+./setup.sh
+```
+
+Keep Neovim, Yazi, and `tree-sitter-cli` current. On macOS, use Homebrew. On Ubuntu, use `mise` rather than Ubuntu's older Neovim package:
+
+```bash
+mise use -g node@lts neovim@0.12.4 yazi@26.8.15 tree-sitter@0.26.12
+```
+
+For the one-time `nvim-treesitter` migration from `master` to `main`, remove the old generated state:
+
+```bash
+rm -rf \
+  ~/.local/share/nvim/lazy/nvim-treesitter \
+  ~/.local/share/nvim/site/parser \
+  ~/.local/share/nvim/site/parser-info \
+  ~/.local/share/nvim/site/queries \
+  ~/.cache/nvim/tree-sitter-*
+```
+
+Open Neovim and run `:Lazy restore`, `:MasonToolsInstallSync`, and `:checkhealth nvim-treesitter`. Wait for parser installation to finish, then run `ya pkg install` in the shell.
+
 ## WezTerm notes
 
 - Config path in this repo: `wezterm/wezterm.lua`

@@ -36,6 +36,9 @@ opt.clipboard:append("unnamedplus") -- use system clipboard as default register
 opt.splitright = true -- split vertical window to the right
 opt.splitbelow = true -- split horizontal window to the bottom
 
+-- diff display
+vim.cmd("set diffopt+=algorithm:histogram,linematch:60")
+
 -- turn off swapfile
 opt.swapfile = false
 
