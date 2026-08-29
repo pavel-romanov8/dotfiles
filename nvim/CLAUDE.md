@@ -31,7 +31,7 @@ Each plugin configuration file returns a Lazy.nvim plugin specification table.
 - `:LspInfo` - Show LSP status for current buffer
 
 ### Development Workflows
-- `<leader>ff` - Find files (Telescope)
+- `<leader>ff` - Find files (fzf-lua)
 - `<leader>fs` - Live grep in files
 - `<leader>lg` - Open LazyGit
 - Format on save is enabled via conform.nvim

@@ -32,7 +32,6 @@ return {
   dependencies = { "nvim-tree/nvim-web-devicons" },
   cmd = "FzfLua",
   opts = {
-    profile = "telescope",
     files = {
       fd_opts = table.concat(fd_opts, " "),
       hidden = false,
@@ -42,6 +41,7 @@ return {
     },
   },
   keys = {
+    { "<leader>fb", function() require("fzf-lua").buffers() end, desc = "Find open buffers" },
     { "<leader>ff", function() require("fzf-lua").files() end, desc = "Fuzzy find files in cwd" },
     { "<leader>fr", function() require("fzf-lua").oldfiles() end, desc = "Fuzzy find recent files" },
     { "<leader>fs", function() require("fzf-lua").live_grep_native() end, desc = "Find string in cwd" },
