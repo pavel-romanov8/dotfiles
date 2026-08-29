@@ -54,10 +54,5 @@ return {
     })
 
     telescope.load_extension("fzf")
-
-    -- set keymaps
-    local keymap = vim.keymap -- for conciseness
-
-    keymap.set("n", "<leader>ft", "<cmd>TodoTelescope<cr>", { desc = "Find todos" })
   end,
 }

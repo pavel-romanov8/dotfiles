@@ -46,5 +46,6 @@ return {
     { "<leader>fr", function() require("fzf-lua").oldfiles() end, desc = "Fuzzy find recent files" },
     { "<leader>fs", function() require("fzf-lua").live_grep_native() end, desc = "Find string in cwd" },
     { "<leader>fc", function() require("fzf-lua").grep_cword() end, desc = "Find string under cursor in cwd" },
+    { "<leader>ft", function() require("fzf-lua").treesitter() end, desc = "Find symbols in current file" },
   },
 }
