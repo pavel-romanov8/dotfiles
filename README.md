@@ -50,6 +50,12 @@ rm -rf \
 
 Open Neovim and run `:Lazy restore`, `:MasonToolsInstallSync`, and `:checkhealth nvim-treesitter`. Wait for parser installation to finish, then run `ya pkg install` in the shell.
 
+## Neovim theme mode
+
+Neovim follows the detected system appearance by default. Use `<leader>ut` or `:Theme` to choose between Auto, Light, and Dark. The choice is saved per machine, so a manual override also survives restarts inside a VM.
+
+For direct access, use `:ThemeAuto`, `:ThemeLight`, `:ThemeDark`, or `:ThemeToggle`. `:ThemeSyncSystem` remains an alias for returning to Auto. In Auto mode, `NVIM_THEME=light|dark` and `WEZTERM_APPEARANCE=light|dark` take priority over host OS detection.
+
 ## WezTerm notes
 
 - Config path in this repo: `wezterm/wezterm.lua`

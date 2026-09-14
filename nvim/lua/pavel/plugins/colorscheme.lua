@@ -15,10 +15,10 @@ return {
 			update_interval = 1500,
 			fallback = "dark",
 			set_dark_mode = function()
-				require("pavel.themes").apply("dark")
+				require("pavel.themes").apply_automatic("dark")
 			end,
 			set_light_mode = function()
-				require("pavel.themes").apply("light")
+				require("pavel.themes").apply_automatic("light")
 			end,
 		},
 	},
