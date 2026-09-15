@@ -4,6 +4,11 @@ set -euo pipefail
 DOTFILES_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_DIR="$HOME/.config"
 
+if ! command -v python3 >/dev/null 2>&1; then
+    echo 'error: python3 is required to safely merge Pi appearance settings.' >&2
+    exit 1
+fi
+
 # Add config directory names here as you add more tools
 CONFIGS=(nvim yazi wezterm tmux)
 
@@ -34,6 +39,27 @@ for name in "${CONFIGS[@]}"; do
     ln -s "$src" "$dest"
     echo "link: $dest -> $src"
 done
+
+# Pi stores private settings, credentials, and sessions outside ~/.config.
+# Link only our theme files; preserve other themes and all machine-local state.
+PI_AGENT_DIR="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+mkdir -p "$PI_AGENT_DIR/themes"
+for src in "$DOTFILES_DIR"/pi/themes/*.json; do
+    dest="$PI_AGENT_DIR/themes/$(basename "$src")"
+    if [ -L "$dest" ] && [ "$(readlink "$dest")" = "$src" ]; then
+        echo "ok:   $dest -> $src"
+        continue
+    fi
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+        backup="$(mktemp "$dest.bak.XXXXXX")"
+        mv "$dest" "$backup"
+        echo "backup: $dest -> $backup"
+    fi
+    ln -s "$src" "$dest"
+    echo "link: $dest -> $src"
+done
+python3 "$DOTFILES_DIR/pi/setup_settings.py" "$PI_AGENT_DIR"
+echo 'Pi: appearance configured. Restart Pi to pick up settings changes.'
 
 TMUX_CONF_SRC="$CONFIG_DIR/tmux/tmux.conf"
 TMUX_CONF_DEST="$HOME/.tmux.conf"
