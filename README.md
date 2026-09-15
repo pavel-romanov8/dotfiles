@@ -8,7 +8,7 @@ Shared terminal/editor file setup.
 - `yazi`
 - `wezterm`
 - `tmux`
-- `pi` (GitHub dark/light themes only; no extensions)
+- `pi` (GitHub dark/light themes; optional MCP adapter and permission rules)
 
 ## Setup
 
@@ -115,6 +115,68 @@ pi --use-theme github-dark
 Theme sources: `pi/themes/github-{light,dark}.json`. Editing the active theme hot-reloads its colors. The palette uses readable secondary text, neutral tool panels, blue accents, and distinct red/green diff text. Neovim and OpenCode configuration are unchanged.
 
 To revert pi's appearance, set `theme` to `light/dark` (built-in automatic pair) and `editorPaddingX` to `0`. WezTerm's light-scheme override is still available, but another palette may no longer match pi.
+
+## Pi MCP trial
+
+Optional setup, separate from `./setup.sh` (which still manages appearance only):
+
+```bash
+./pi/setup-mcp.sh
+```
+
+This installs **`pi-mcp-adapter@2.34.0`** and seeds `~/.pi/agent/mcp.json`
+(or `$PI_CODING_AGENT_DIR/mcp.json`) from `pi/mcp.example.json` only when absent.
+Existing MCP configuration is preserved, not merged or overwritten. If already
+configured, add the example's servers manually or use `/mcp setup`. Close Pi
+before setup to avoid concurrent settings writes; restart afterward.
+
+The template copies both enabled servers found in this machine's OpenCode config:
+
+- **Playwright**: local stdio via `npx -y @playwright/mcp@0.0.81`. Pinned instead
+  of OpenCode's `latest`; starts on demand and does not inherit arbitrary host
+  environment variables (not an OS sandbox).
+- **GitHub**: `https://api.githubcopilot.com/mcp/`, using
+  `GITHUB_PERSONAL_ACCESS_TOKEN` from Pi's environment. Export your existing token
+  before launching Pi. No token is stored in Git, and no OAuth setup is needed.
+
+OpenCode is untouched. This is a snapshot, not automatic synchronization; broad
+host-config discovery is off. Use `/mcp setup` to add servers later and `/mcp` to
+inspect status, reconnect, or enable/disable servers. Lazy servers may initially
+show as not connected; connecting discovers their tools without executing them.
+Playwright may need its browser installed on a new machine.
+
+Without the permission extension below, MCP tool calls ask **Allow once / Allow
+for session / Deny** through the adapter. Calls requiring approval fail closed
+without a UI. Scripting and model sampling are disabled for this initial trial.
+The optional permission extension unifies Bash and MCP decisions; otherwise shell
+execution retains Pi's existing behavior. Approval gates are not a sandbox and
+do not gate server startup. Only load trusted extensions and MCP configurations.
+
+To remove the adapter, run `pi remove npm:pi-mcp-adapter`. Its machine-local MCP
+configuration remains available if you reinstall. Normal `./setup.sh` will not
+reinstall it.
+
+## Pi permission rules
+
+Opt-in, dotfiles-owned OpenCode-style `allow` / `ask` / `deny` rules:
+
+```bash
+python3 pi/setup_permissions.py
+```
+
+Restart Pi or run `/reload`, then `/permissions`. Setup links the extension and
+seeds a private `~/.pi/agent/permissions.json` (or `$PI_CODING_AGENT_DIR`) only
+when absent; your existing rules and other extensions are preserved.
+
+Defaults allow normal reads/edits and a small set of exact Git inspection
+commands, ask for other Bash/MCP/custom-tool actions, and deny literal `sudo`
+commands. `GitHub/get_me` is allowed. Complex shell syntax asks rather than being
+auto-allowlisted. MCP uses the adapter's per-call approval hook, without duplicate
+prompts. `/permissions clear` revokes exact-action session grants.
+
+See **[pi/permissions.md](pi/permissions.md)** for configuration, precedence,
+installation, tests, MCP coverage, and limitations. Global policy only; no
+sandboxing or new npm dependencies. `./setup.sh` remains appearance-only.
 
 ## tmux notes
 

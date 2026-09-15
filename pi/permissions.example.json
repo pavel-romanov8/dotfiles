@@ -1,0 +1,26 @@
+{
+  "permission": {
+    "*": "ask",
+    "read": "allow",
+    "grep": "allow",
+    "find": "allow",
+    "ls": "allow",
+    "edit": "allow",
+    "write": "allow",
+    "bash": {
+      "*": "ask",
+      "pwd": "allow",
+      "git status": "allow",
+      "git status --short": "allow",
+      "git diff": "allow",
+      "git diff --stat": "allow",
+      "git diff --check": "allow",
+      "git push*": "ask",
+      "sudo": "deny",
+      "sudo *": "deny"
+    },
+    "GitHub/*": "ask",
+    "GitHub/get_me": "allow",
+    "playwright/*": "ask"
+  }
+}

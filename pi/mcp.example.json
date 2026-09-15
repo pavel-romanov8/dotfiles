@@ -1,0 +1,24 @@
+{
+  "settings": {
+    "hostConfigDiscovery": "off",
+    "approveTools": true,
+    "scriptMode": false,
+    "sampling": false,
+    "mcpFooterStatus": "compact"
+  },
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.81"],
+      "lifecycle": "lazy",
+      "inheritEnv": false
+    },
+    "GitHub": {
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "lifecycle": "lazy"
+    }
+  }
+}
