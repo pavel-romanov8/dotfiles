@@ -42,7 +42,7 @@ export function matches(pattern: string, value: string): boolean {
 }
 
 export function decide(policy: Policy, tool: string, inputs: string[]): Decision {
-  let result: Decision = { action: "ask", reason: "No matching rule (default ask)" };
+  let result: Decision = { action: "allow", reason: "No matching rule (default allow)" };
   for (const [pattern, rule] of Object.entries(policy.permission)) {
     if (!matches(pattern, tool)) continue;
     if (typeof rule === "string") result = { action: rule, reason: `${pattern}: ${rule}` };

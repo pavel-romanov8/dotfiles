@@ -37,12 +37,7 @@ permissions file.
 ```json
 {
   "permission": {
-    "*": "ask",
-    "read": "allow",
-    "edit": "allow",
-    "write": "allow",
     "bash": {
-      "*": "allow",
       "rm": "ask",
       "rm *": "ask",
       "rmdir": "ask",
@@ -66,10 +61,16 @@ permissions file.
 }
 ```
 
-The supplied template allows most Bash commands, asks before direct file deletion
-or truncation and destructive Git operations, and denies direct `sudo` commands.
-This is intentionally optimized for a low-friction local coding workflow, not
-for containing untrusted commands. Other unknown tools and MCP calls still ask.
+Unmatched tools and inputs are allowed by default, so policies only need to list
+exceptions. The supplied template asks before direct file deletion or truncation,
+destructive Git operations, and GitHub/Playwright calls, and denies direct `sudo`
+commands. `GitHub/get_me` is allowed as an exception to the GitHub rule. Other
+custom tools and MCP calls run without prompting. This is intentionally optimized
+for a low-friction local coding workflow, not for containing untrusted commands.
+
+Existing policies are preserved by setup. If one contains `"*": "ask"`, that is
+an explicit matching rule and continues to prompt; remove it or change it to
+`"allow"` to adopt the permissive fallback.
 
 ### Matching
 
@@ -81,7 +82,7 @@ for containing untrusted commands. Other unknown tools and MCP calls still ask.
 - String rules set the action for that tool. Nested objects match tool input.
 - **Last matching rule wins**, in JSON property order, at both levels. Put `*`
   first and exceptions later. A nested rule that does not match leaves the prior
-  decision in effect. Without any match the result is `ask`.
+  decision in effect. Without any match the result is `allow`.
 - For Bash, nested patterns match each command found in a shell command list.
   Surrounding whitespace is removed and unquoted horizontal whitespace is
   collapsed for matching; quoted text and the command actually executed are not
@@ -115,9 +116,9 @@ it cannot split a command, policy is applied to the complete command string.
 Shell wrappers such as `sh -c`, interpreters, scripts, functions, aliases, and
 executables can hide effects that rules cannot see. For example, allowing
 `npm test` trusts repository scripts, allowing a Python heredoc trusts that
-program, and Git behavior can depend on repository settings. A broad `allow`
-rule explicitly accepts these limits; use an `ask` fallback if you need stricter
-review.
+program, and Git behavior can depend on repository settings. The permissive
+fallback explicitly accepts these limits; add a broad `ask` rule if you need
+stricter review.
 
 ## Prompts and session approvals
 

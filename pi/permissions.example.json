@@ -1,14 +1,6 @@
 {
   "permission": {
-    "*": "ask",
-    "read": "allow",
-    "grep": "allow",
-    "find": "allow",
-    "ls": "allow",
-    "edit": "allow",
-    "write": "allow",
     "bash": {
-      "*": "allow",
       "rm": "ask",
       "rm *": "ask",
       "rmdir": "ask",

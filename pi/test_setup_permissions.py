@@ -27,7 +27,9 @@ class PermissionSetupTests(unittest.TestCase):
         self.assertTrue(self.extension.is_symlink())
         self.assertTrue((self.extension / "index.ts").is_file())
         policy = validate_policy(self.policy.read_text())
-        self.assertEqual(policy["permission"]["edit"], "allow")
+        self.assertNotIn("*", policy["permission"])
+        self.assertNotIn("edit", policy["permission"])
+        self.assertEqual(policy["permission"]["bash"]["rm"], "ask")
         self.assertEqual(self.policy.stat().st_mode & 0o777, 0o600)
         original = self.policy.read_bytes()
         before = self.policy.stat().st_mtime_ns

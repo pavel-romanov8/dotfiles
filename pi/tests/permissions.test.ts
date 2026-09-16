@@ -31,7 +31,9 @@ test("strict policy validation", () => {
     assert.throws(() => parsePolicy(text));
   }
   assert.throws(() => parsePolicy(" ".repeat(65537)));
-  assert.equal(decide(parsePolicy('{"permission":{}}'), "unknown", [""]).action, "ask");
+  const fallback = decide(parsePolicy('{"permission":{}}'), "unknown", [""]);
+  assert.equal(fallback.action, "allow");
+  assert.match(fallback.reason, /default allow/);
 });
 
 test("anchored glob literals, wildcards and case sensitivity", () => {
@@ -112,8 +114,15 @@ test("allow and deny do not prompt; file edits are allowed", async t => {
   assert.equal(f.prompts(), 0);
 });
 
-test("unknown tools ask; dismissal, denial, UI errors and no UI block", async t => {
+test("unmatched tools are allowed without prompting", async t => {
   const f = fixture(t);
+  const request = { tool: "custom_tool", input: { value: 1 } };
+  assert.ok((await f.gate.authorize(request, f.ctx)).allowed);
+  assert.equal(f.prompts(), 0);
+});
+
+test("explicit ask rules fail closed on dismissal, denial, UI errors and no UI", async t => {
+  const f = fixture(t, askAll);
   const request = { tool: "custom_tool", input: { value: 1 } };
   for (const choice of [undefined, "Deny"]) {
     f.choose(async () => choice);
@@ -268,6 +277,7 @@ test("adapter surfaces defer to broker, install asks, unrelated lookalikes do no
   assert.equal(f.prompts(), 0);
   assert.equal((await f.call("mcp", { action: "install", url: "https://example.com/mcp" })).block, true);
   f.tools.length = 0;
+  f.save({ permission: { "mcp__GitHub": "ask" } });
   assert.equal((await f.call("mcp__GitHub", { tool: "get_me" })).block, true);
 });
 
