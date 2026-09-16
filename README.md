@@ -168,11 +168,13 @@ Restart Pi or run `/reload`, then `/permissions`. Setup links the extension and
 seeds a private `~/.pi/agent/permissions.json` (or `$PI_CODING_AGENT_DIR`) only
 when absent; your existing rules and other extensions are preserved.
 
-Defaults allow normal reads/edits and a small set of exact Git inspection
-commands, ask for other Bash/MCP/custom-tool actions, and deny literal `sudo`
-commands. `GitHub/get_me` is allowed. Complex shell syntax asks rather than being
-auto-allowlisted. MCP uses the adapter's per-call approval hook, without duplicate
-prompts. `/permissions clear` revokes exact-action session grants.
+Defaults allow normal reads/edits and most Bash commands, ask before destructive
+file/Git operations such as `rm`, `git reset --hard`, and `git push`, and deny
+direct `sudo` commands. Unknown MCP/custom-tool actions still ask;
+`GitHub/get_me` is allowed. Compound shell calls are checked command by command,
+so normal quoting, pipes, and redirections do not trigger approvals by themselves.
+MCP uses the adapter's per-call approval hook, without duplicate prompts.
+`/permissions clear` revokes exact-action session grants.
 
 See **[pi/permissions.md](pi/permissions.md)** for configuration, precedence,
 installation, tests, MCP coverage, and limitations. Global policy only; no

@@ -55,24 +55,39 @@ test("last matching rule wins at both levels; nested misses retain fallback", ()
   assert.equal(decide(parsePolicy('{"permission":{"*":"deny","bash":{"pwd":"allow"}}}'), "bash", ["ls"]).action, "deny");
 });
 
-test("simple literal commands normalize spaces; defaults stay conservative", () => {
+test("permissive Bash defaults retain destructive-operation guardrails", () => {
   assert.equal(decideBash(policy, " git\tstatus ").action, "allow");
-  assert.equal(decideBash(policy, "git status --short").action, "allow");
-  assert.equal(decideBash(policy, "git status --untracked-files=all").action, "ask");
+  assert.equal(decideBash(policy, "git status --untracked-files=all").action, "allow");
+  assert.equal(decideBash(policy, "git checkout feature-branch").action, "allow");
+  for (const command of [
+    "rm file", "rmdir build", "unlink output", "truncate -s 0 data",
+    "git clean -fd", "git reset --hard HEAD", "git restore file",
+    "git checkout -- file", "git push origin main", "git status && rm -rf build",
+  ]) assert.equal(decideBash(policy, command).action, "ask", command);
   assert.equal(decideBash(policy, "sudo").action, "deny");
   assert.equal(decideBash(policy, "git status && sudo reboot").action, "deny");
 });
 
-test("broad allow rules never auto-allow opaque/compound shell syntax", () => {
-  const p = parsePolicy('{"permission":{"bash":"allow"}}');
+test("Bash checks parsed command lists without treating normal syntax as suspicious", () => {
+  const p = parsePolicy('{"permission":{"bash":{"*":"allow","git push*":"ask","sudo":"deny","sudo *":"deny"}}}');
   for (const command of [
-    'git status; rm -rf work', 'git status && git push', 'git status | sh', 'git status\ngit push',
-    'git status "$(touch foo)"', 'echo `whoami`', 'cat <(env)', 'echo hi > foo',
-    'echo $TOKEN', "echo 'hello'", 'git st\\atus', 'echo *.env', 'echo {a,b}',
-    'git status # comment', 'git status &', 'A=1 git status', '(git status)',
-    'git status\n', 'git status\r', 'echo ~', 'cat <<EOF\nhello\nEOF', '',
-  ]) assert.equal(decideBash(p, command).action, "ask", command);
-  assert.equal(decideBash(p, "npm test").action, "allow"); // A script allowlist is an explicit trust decision.
+    "printf 'x;y' | grep x", "printf '%s' 'sudo reboot'", 'echo "$TOKEN" > file',
+    "echo '*.env' # literal glob", 'git status && git diff --stat', 'A=1 npm test', '(git status)',
+    'python3 - <<\'PY\'\nprint(\'sudo reboot\')\nPY',
+  ]) assert.equal(decideBash(p, command).action, "allow", command);
+  assert.equal(decideBash(p, "git status && git push origin main").action, "ask");
+  assert.equal(decideBash(p, "echo ok | sudo tee file").action, "deny");
+  assert.equal(decideBash(p, "if true; then sudo reboot; fi").action, "deny");
+  assert.equal(decideBash(p, 'echo "$(sudo reboot)"').action, "deny");
+  assert.equal(decideBash(p, "cat <<EOF\n$(sudo reboot)\nEOF").action, "deny");
+  assert.equal(decideBash(p, "echo `git push origin main`").action, "ask");
+  assert.equal(decideBash(p, "").action, "ask");
+});
+
+test("compound commands are allowed when every parsed command is allowlisted", () => {
+  const p = parsePolicy('{"permission":{"bash":{"*":"ask","git status*":"allow","git diff*":"allow"}}}');
+  assert.equal(decideBash(p, "git status --short && git diff --stat").action, "allow");
+  assert.equal(decideBash(p, "git status && npm test").action, "ask");
 });
 
 test("stable argument identities and safe terminal display", () => {

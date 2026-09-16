@@ -56,29 +56,241 @@ export function decide(policy: Policy, tool: string, inputs: string[]): Decision
   return result;
 }
 
-// Deliberately NOT a general Bash parser. Only unquoted literal words can be
-// auto-allowed. Everything else asks. We also inspect flat command lists for
-// explicit denials, but never auto-allow a compound command.
-const literalCommand = /^[A-Za-z_./][A-Za-z0-9_./:+@%,=-]*(?:[ \t]+[A-Za-z0-9_./:+@%,=-]+)*$/;
-function normalizeSimple(command: string): string | undefined {
-  if (!literalCommand.test(command) || command.split(/[ \t]/)[0].includes("=")) return;
-  return command.replace(/[ \t]+/g, " ");
+// This is a small shell scanner, not an execution sandbox. It splits ordinary
+// command lists outside quotes, recursively checks command/process
+// substitutions, ignores comments and heredoc bodies, and leaves the original
+// command untouched. Interpreters and wrapper commands remain trust boundaries.
+type HereDoc = { delimiter: string; stripTabs: boolean; expand: boolean };
+
+function matchingParen(text: string, open: number): number | undefined {
+  let depth = 1;
+  let quote: "'" | '"' | "`" | undefined;
+  for (let i = open + 1; i < text.length; i++) {
+    const char = text[i];
+    if (char === "\\" && quote !== "'") { i++; continue; }
+    if (quote) {
+      if (char === quote) quote = undefined;
+      continue;
+    }
+    if (char === "'" || char === '"' || char === "`") { quote = char; continue; }
+    if (char === "(") depth++;
+    else if (char === ")" && --depth === 0) return i;
+  }
+}
+
+function matchingBacktick(text: string, open: number): number | undefined {
+  for (let i = open + 1; i < text.length; i++) {
+    if (text[i] === "\\") i++;
+    else if (text[i] === "`") return i;
+  }
+}
+
+function heredocAt(text: string, index: number): { doc: HereDoc; end: number } | undefined {
+  if (text[index] !== "<" || text[index + 1] !== "<" || text[index + 2] === "<") return;
+  let cursor = index + 2;
+  const stripTabs = text[cursor] === "-";
+  if (stripTabs) cursor++;
+  while (text[cursor] === " " || text[cursor] === "\t") cursor++;
+  const quote = text[cursor] === "'" || text[cursor] === '"' ? text[cursor++] : undefined;
+  const start = cursor;
+  if (quote) {
+    while (cursor < text.length && text[cursor] !== quote) cursor++;
+    if (cursor === text.length || cursor === start) return;
+    return { doc: { delimiter: text.slice(start, cursor), stripTabs, expand: false }, end: cursor };
+  }
+  while (cursor < text.length && !/[ \t\r\n;&|()<>]/.test(text[cursor])) cursor++;
+  if (cursor === start) return;
+  const raw = text.slice(start, cursor);
+  return {
+    doc: { delimiter: raw.replace(/\\/g, ""), stripTabs, expand: !raw.includes("\\") },
+    end: cursor - 1,
+  };
+}
+
+function shellExpansions(text: string, commands: string[], depth: number): boolean {
+  if (depth > 32) return false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === "\\") { i++; continue; }
+    if (char === "`") {
+      const close = matchingBacktick(text, i);
+      if (close === undefined || !shellCommands(text.slice(i + 1, close), commands, depth + 1)) return false;
+      i = close;
+    } else if (char === "$" && text[i + 1] === "(") {
+      const open = i + 1;
+      const close = matchingParen(text, open);
+      if (close === undefined) return false;
+      const body = text.slice(open + 1, close);
+      if (text[i + 2] === "(") {
+        if (!shellExpansions(body, commands, depth + 1)) return false;
+      } else if (!shellCommands(body, commands, depth + 1)) return false;
+      i = close;
+    }
+  }
+  return true;
+}
+
+function skipHeredocs(
+  text: string, start: number, docs: HereDoc[], commands: string[], depth: number,
+): number | undefined {
+  let cursor = start;
+  for (const doc of docs) {
+    const bodyStart = cursor;
+    let found = false;
+    while (cursor <= text.length) {
+      const lineStart = cursor;
+      const newline = text.indexOf("\n", cursor);
+      const end = newline < 0 ? text.length : newline;
+      const line = text.slice(cursor, end).replace(/\r$/, "");
+      if ((doc.stripTabs ? line.replace(/^\t+/, "") : line) === doc.delimiter) {
+        if (doc.expand && !shellExpansions(text.slice(bodyStart, lineStart), commands, depth)) return;
+        cursor = newline < 0 ? text.length : newline + 1;
+        found = true;
+        break;
+      }
+      if (newline < 0) break;
+      cursor = newline + 1;
+    }
+    if (!found) return;
+  }
+  return cursor;
+}
+
+function normalizeShellCommand(command: string): string {
+  let result = "", whitespace = false;
+  let quote: "'" | '"' | undefined;
+  for (let i = 0; i < command.length; i++) {
+    const char = command[i];
+    if (char === "\\" && quote !== "'") {
+      if (whitespace && result) result += " ";
+      whitespace = false;
+      result += char + (command[++i] ?? "");
+      continue;
+    }
+    if (quote) {
+      result += char;
+      if (char === quote) quote = undefined;
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      if (whitespace && result) result += " ";
+      whitespace = false;
+      quote = char;
+      result += char;
+    } else if (char === " " || char === "\t" || char === "\r") whitespace = true;
+    else {
+      if (whitespace && result) result += " ";
+      whitespace = false;
+      result += char;
+    }
+  }
+  let normalized = result.trim();
+  // Control-flow words introduce a command but are not part of its permission
+  // pattern. This also prevents `then sudo ...` from bypassing a sudo rule.
+  const control = /^(?:!|then|do|else|elif|if|while|until|time)(?:\s+|$)/;
+  while (control.test(normalized)) normalized = normalized.replace(control, "").trimStart();
+  return normalized;
+}
+
+function shellCommands(text: string, commands: string[], depth = 0): boolean {
+  if (depth > 32) return false;
+  let start = 0;
+  let quote: "'" | '"' | undefined;
+  let heredocs: HereDoc[] = [];
+  const add = (end: number) => {
+    const command = normalizeShellCommand(text.slice(start, end));
+    if (command) commands.push(command);
+  };
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === "\\" && quote !== "'") { i++; continue; }
+    if (quote === "'") {
+      if (char === "'") quote = undefined;
+      continue;
+    }
+    if (!quote && char === "'") { quote = "'"; continue; }
+    if (char === '"') { quote = quote === '"' ? undefined : '"'; continue; }
+    if (quote === '"' && char !== "$" && char !== "`") continue;
+
+    if (
+      char === "`"
+      || (char === "$" && text[i + 1] === "(")
+      || ((char === "<" || char === ">") && text[i + 1] === "(")
+    ) {
+      if (char === "`") {
+        const close = matchingBacktick(text, i);
+        if (close === undefined || !shellCommands(text.slice(i + 1, close), commands, depth + 1)) return false;
+        i = close;
+        continue;
+      }
+      const open = i + 1;
+      const close = matchingParen(text, open);
+      if (close === undefined) return false;
+      const body = text.slice(open + 1, close);
+      // Arithmetic is not a command, but substitutions inside it still are.
+      if (char === "$" && text[i + 2] === "(") {
+        if (!shellExpansions(body, commands, depth + 1)) return false;
+      } else if (!shellCommands(body, commands, depth + 1)) return false;
+      i = close;
+      continue;
+    }
+
+    if (!quote && char === "<") {
+      const parsed = heredocAt(text, i);
+      if (parsed) { heredocs.push(parsed.doc); i = parsed.end; continue; }
+    }
+    if (!quote && char === "#" && (i === start || /\s/.test(text[i - 1]))) {
+      add(i);
+      const newline = text.indexOf("\n", i);
+      if (newline < 0) { start = text.length; break; }
+      i = newline - 1;
+      start = newline;
+      continue;
+    }
+    if (!quote && char === "\n") {
+      add(i);
+      if (heredocs.length) {
+        const next = skipHeredocs(text, i + 1, heredocs, commands, depth);
+        if (next === undefined) return false;
+        i = next - 1;
+        heredocs = [];
+        start = next;
+      } else start = i + 1;
+      continue;
+    }
+    if (!quote && (char === ";" || char === "|" || char === "&" || char === "(" || char === ")")) {
+      // The ampersand in a redirection such as 2>&1 is not a command separator.
+      if (char === "&" && (text[i - 1] === ">" || text[i - 1] === "<" || text[i + 1] === ">")) continue;
+      add(i);
+      if ((char === ";" && text[i + 1] === ";") || (char === "&" && text[i + 1] === "&")
+        || (char === "|" && (text[i + 1] === "|" || text[i + 1] === "&"))) i++;
+      start = i + 1;
+    }
+  }
+  if (quote || heredocs.length) return false;
+  add(text.length);
+  return true;
 }
 
 export function decideBash(policy: Policy, command: string): Decision {
-  // Do not trim away newlines or other shell constructs before classifying.
-  const text = command.replace(/^[ \t]+|[ \t]+$/g, "");
-  const simple = normalizeSimple(text);
-  const direct = decide(policy, "bash", [simple ?? text]);
-  if (direct.action === "deny" || simple !== undefined) return direct;
-  const pieces = text.split(/(?:&&|\|\||[;|\n])/).map(s => s.trim());
-  if (pieces.length > 1 && pieces.every(s => normalizeSimple(s) !== undefined)) {
-    for (const piece of pieces) {
-      const decision = decide(policy, "bash", [normalizeSimple(piece)!]);
-      if (decision.action === "deny") return decision;
-    }
+  if (!command.trim()) return { action: "ask", reason: "Empty shell command" };
+  const commands: string[] = [];
+  if (!shellCommands(command, commands) || !commands.length) {
+    const direct = decide(policy, "bash", [normalizeShellCommand(command)]);
+    return { ...direct, reason: `Shell command could not be split; ${direct.reason}` };
   }
-  return { action: "ask", reason: `Complex/unsupported shell syntax; approval required (${direct.reason})` };
+
+  let approval: Decision | undefined;
+  for (const parsed of commands) {
+    const decision = decide(policy, "bash", [parsed]);
+    if (decision.action === "deny") return decision;
+    if (decision.action === "ask") approval ??= decision;
+  }
+  if (approval) return approval;
+  return commands.length === 1
+    ? decide(policy, "bash", [commands[0]])
+    : { action: "allow", reason: `All ${commands.length} parsed shell commands are allowed` };
 }
 
 export function stableJSON(value: unknown): string {

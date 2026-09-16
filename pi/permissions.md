@@ -42,9 +42,19 @@ permissions file.
     "edit": "allow",
     "write": "allow",
     "bash": {
-      "*": "ask",
-      "git status": "allow",
-      "git status --short": "allow",
+      "*": "allow",
+      "rm": "ask",
+      "rm *": "ask",
+      "rmdir": "ask",
+      "rmdir *": "ask",
+      "unlink": "ask",
+      "unlink *": "ask",
+      "truncate": "ask",
+      "truncate *": "ask",
+      "git clean*": "ask",
+      "git reset --hard*": "ask",
+      "git restore*": "ask",
+      "git checkout --*": "ask",
       "git push*": "ask",
       "sudo": "deny",
       "sudo *": "deny"
@@ -56,9 +66,10 @@ permissions file.
 }
 ```
 
-The supplied template also allows `ls`, `grep`, `find`, `pwd`, and a few exact
-Git inspection commands. It does **not** auto-allow arbitrary `git *`, `npm *`,
-Python, or other interpreters.
+The supplied template allows most Bash commands, asks before direct file deletion
+or truncation and destructive Git operations, and denies direct `sudo` commands.
+This is intentionally optimized for a low-friction local coding workflow, not
+for containing untrusted commands. Other unknown tools and MCP calls still ask.
 
 ### Matching
 
@@ -71,9 +82,10 @@ Python, or other interpreters.
 - **Last matching rule wins**, in JSON property order, at both levels. Put `*`
   first and exceptions later. A nested rule that does not match leaves the prior
   decision in effect. Without any match the result is `ask`.
-- For Bash, nested patterns match the command. Simple commands have surrounding
-  spaces/tabs removed and internal spaces/tabs collapsed for matching; the
-  original command is executed, not rewritten.
+- For Bash, nested patterns match each command found in a shell command list.
+  Surrounding whitespace is removed and unquoted horizontal whitespace is
+  collapsed for matching; quoted text and the command actually executed are not
+  rewritten.
 - For file tools, patterns match either the normalized cwd-relative path,
   absolute path, or canonical symlink target. `~/` input patterns expand to the
   user's home directory. `*` spans directory separators. Missing optional paths
@@ -88,23 +100,24 @@ Python, or other interpreters.
 
 ### Shell scope
 
-Auto-allow is intentionally limited to a single command made of unquoted literal
-words. Quotes, escapes, variable/command/process substitution, redirections,
-comments, globbing, assignments, compound commands, and unsupported syntax
-require approval **even if a broad allow rule matches**. An explicit matching
-`deny` still blocks.
+Ordinary command lists are split on shell operators outside quoted text. Each
+parsed command is checked separately: any `deny` blocks the whole call, otherwise
+any `ask` prompts once, and the call runs without a prompt only when every command
+is allowed. This means commands using quotes, pipes, redirections, variables,
+globs, assignments, comments, or multiple commands no longer ask merely because
+of their syntax. Command substitutions, backticks, and process substitutions are
+also checked recursively. Heredoc bodies are treated as input to the allowed
+command; command substitutions in expanding (unquoted) heredocs are still
+checked.
 
-Flat command lists such as `git status && sudo reboot` are additionally checked
-for per-command denials. If any of those simple commands is denied, the whole
-call is blocked. Otherwise compound calls still ask once for the entire command.
-This is a small conservative recognizer, not a general Bash parser. An opaque
-form such as `sh -c 'sudo reboot'` asks unless a rule denies the whole command;
-it is not guaranteed to discover every nested denied action.
-
-An approved script, interpreter, shell function, executable or Git command can
-have effects beyond its command-line spelling. For example, allowing `npm test`
-trusts repository scripts, and Git behavior can depend on repository settings.
-Rules do not inspect those implementations. Review the full command when asked.
+This scanner is deliberately small, not a complete Bash parser or a sandbox. If
+it cannot split a command, policy is applied to the complete command string.
+Shell wrappers such as `sh -c`, interpreters, scripts, functions, aliases, and
+executables can hide effects that rules cannot see. For example, allowing
+`npm test` trusts repository scripts, allowing a Python heredoc trusts that
+program, and Git behavior can depend on repository settings. A broad `allow`
+rule explicitly accepts these limits; use an `ask` fallback if you need stricter
+review.
 
 ## Prompts and session approvals
 
