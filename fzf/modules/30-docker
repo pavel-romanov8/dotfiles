@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+set -u
+
+MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)" || exit 1
+FF_ROOT="$(cd "$MODULE_DIR/.." >/dev/null 2>&1 && pwd)" || exit 1
+# shellcheck source=../lib/common.sh
+source "$FF_ROOT/lib/common.sh"
+
+is_valid_id() {
+  [[ "$1" =~ ^[a-fA-F0-9]{12,64}$ ]]
+}
+
+list_containers() {
+  printf 'ID\tNAME\tIMAGE\tSTATUS\tPORTS\n'
+  docker ps --all --format $'{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null
+}
+
+container_name() {
+  local id="$1"
+  is_valid_id "$id" || return 1
+  docker inspect --format '{{.Name}}' "$id" 2>/dev/null | sed 's#^/##'
+}
+
+preview_container() {
+  local id="$1"
+  is_valid_id "$id" || return 1
+
+  docker inspect --format $'Name\t{{.Name}}\nImage\t{{.Config.Image}}\nState\t{{.State.Status}}\nStarted\t{{.State.StartedAt}}\nRestart count\t{{.RestartCount}}' "$id" 2>/dev/null |
+    sed 's#\t#  #; s#  /#  #' |
+    ff_sanitize
+  printf '\nRecent logs\n───────────\n'
+  docker logs --tail 200 "$id" 2>&1 | ff_sanitize
+}
+
+toggle_container() {
+  local id="$1"
+  local running
+  is_valid_id "$id" || return 1
+
+  running="$(docker inspect --format '{{.State.Running}}' "$id" 2>/dev/null)" || return 1
+  if [[ "$running" == true ]]; then
+    docker stop "$id" >/dev/null
+  else
+    docker start "$id" >/dev/null
+  fi
+}
+
+copy_container_name() {
+  local name
+  name="$(container_name "$1")" || return 1
+  printf '%s' "$name" | ff_copy
+}
+
+open_shell() {
+  local id="$1"
+  local running
+  is_valid_id "$id" || return 1
+
+  running="$(docker inspect --format '{{.State.Running}}' "$id" 2>/dev/null)" || return 1
+  if [[ "$running" != true ]]; then
+    printf 'ff: container %s is stopped; use Ctrl-S to start it first.\n' "$(container_name "$id")" >&2
+    return 1
+  fi
+
+  docker exec -it "$id" bash || docker exec -it "$id" sh
+}
+
+case "${1:-}" in
+  --metadata)
+    printf '30\tDocker containers\tInspect logs, open a shell, and start or stop containers\n'
+    exit 0
+    ;;
+  --check)
+    command -v docker >/dev/null 2>&1 || {
+      printf 'docker is not installed'
+      exit 1
+    }
+    command -v python3 >/dev/null 2>&1 || {
+      printf 'python3 is not installed'
+      exit 1
+    }
+    exit 0
+    ;;
+  --list)
+    list_containers
+    exit $?
+    ;;
+  --preview)
+    preview_container "${2:-}"
+    exit $?
+    ;;
+  --toggle)
+    toggle_container "${2:-}"
+    exit $?
+    ;;
+  --copy-name)
+    copy_container_name "${2:-}"
+    exit $?
+    ;;
+  --shell)
+    open_shell "${2:-}"
+    exit $?
+    ;;
+  '') ;;
+  *)
+    printf 'ff docker: unknown internal option: %s\n' "$1" >&2
+    exit 2
+    ;;
+esac
+
+"${BASH_SOURCE[0]}" --check || exit $?
+ff_require_fzf || exit 1
+
+if ! docker info >/dev/null 2>&1; then
+  printf 'ff: Docker is installed, but the daemon is not reachable. Start Docker and try again.\n' >&2
+  exit 1
+fi
+
+script_q="$(ff_shell_quote "${BASH_SOURCE[0]}")"
+list_command="$script_q --list"
+selection="$(list_containers | ff_fzf \
+  --ansi \
+  --delimiter=$'\t' \
+  --with-nth=2,3,4,5 \
+  --nth=2,3,4,5 \
+  --header-lines=1 \
+  --no-multi \
+  --prompt='docker> ' \
+  --border-label=' FF · Docker containers ' \
+  --header='Enter: shell  ·  Ctrl-S: start/stop  ·  Ctrl-R: reload  ·  Ctrl-Y: copy name  ·  Ctrl-/: preview' \
+  --preview="$script_q --preview {1}" \
+  --preview-window='right,60%,follow' \
+  --bind="ctrl-r:reload($list_command)" \
+  --bind="ctrl-s:execute-silent($script_q --toggle {1})+reload($list_command)" \
+  --bind="ctrl-y:execute-silent($script_q --copy-name {1})+bell" \
+  --bind='ctrl-/:toggle-preview')" || exit $?
+
+[[ -n "$selection" ]] || exit 0
+id="${selection%%$'\t'*}"
+open_shell "$id"

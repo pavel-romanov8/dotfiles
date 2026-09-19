@@ -10,7 +10,7 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 # Add config directory names here as you add more tools
-CONFIGS=(nvim yazi wezterm tmux)
+CONFIGS=(nvim yazi wezterm tmux fzf)
 
 mkdir -p "$CONFIG_DIR"
 
@@ -39,6 +39,24 @@ for name in "${CONFIGS[@]}"; do
     ln -s "$src" "$dest"
     echo "link: $dest -> $src"
 done
+
+# Expose only the unified fzf launcher. Internal workflow modules stay out of
+# PATH so there are no per-workflow commands to remember.
+LOCAL_BIN_DIR="$HOME/.local/bin"
+FF_SRC="$CONFIG_DIR/fzf/bin/ff"
+FF_DEST="$LOCAL_BIN_DIR/ff"
+mkdir -p "$LOCAL_BIN_DIR"
+if [ -L "$FF_DEST" ] && [ "$(readlink "$FF_DEST")" = "$FF_SRC" ]; then
+    echo "ok:   $FF_DEST -> $FF_SRC"
+else
+    if [ -e "$FF_DEST" ] || [ -L "$FF_DEST" ]; then
+        backup="$(mktemp "$FF_DEST.bak.XXXXXX")"
+        mv "$FF_DEST" "$backup"
+        echo "backup: $FF_DEST -> $backup"
+    fi
+    ln -s "$FF_SRC" "$FF_DEST"
+    echo "link: $FF_DEST -> $FF_SRC"
+fi
 
 # Pi stores private settings, credentials, and sessions outside ~/.config.
 # Link only our theme files; preserve other themes and all machine-local state.

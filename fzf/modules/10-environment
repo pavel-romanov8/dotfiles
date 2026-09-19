@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+set -u
+
+MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)" || exit 1
+FF_ROOT="$(cd "$MODULE_DIR/.." >/dev/null 2>&1 && pwd)" || exit 1
+# shellcheck source=../lib/common.sh
+source "$FF_ROOT/lib/common.sh"
+
+is_valid_name() {
+  [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]
+}
+
+is_sensitive_name() {
+  local upper
+  upper="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
+  case "$upper" in
+    *TOKEN*|*SECRET*|*PASSWORD*|*PASSWD*|*KEY*|*CREDENTIAL*|*COOKIE*|*AUTH*|*DATABASE_URL*|*DB_URL*|*REDIS_URL*|*DSN*|*CONNECTION_STRING*|*WEBHOOK*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_path_name() {
+  local upper
+  upper="$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')"
+  case "$upper" in
+    PATH|FPATH|MANPATH|CDPATH|PKG_CONFIG_PATH|*_PATH) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+category_for() {
+  if is_sensitive_name "$1"; then
+    printf 'sensitive · masked'
+  elif is_path_name "$1"; then
+    printf 'path list'
+  else
+    printf 'environment'
+  fi
+}
+
+list_variables() {
+  local name
+  while IFS= read -r name; do
+    is_valid_name "$name" || continue
+    printf '%s\t%s\n' "$name" "$(category_for "$name")"
+  done < <(compgen -e | LC_ALL=C sort -u)
+}
+
+print_escaped() {
+  printf '%q\n' "$1"
+}
+
+preview_variable() {
+  local name="$1"
+  local reveal="${2:-false}"
+  local value part
+  local -a parts
+
+  is_valid_name "$name" || {
+    printf 'Invalid environment variable name.\n'
+    return 1
+  }
+
+  value="${!name-}"
+  printf 'Variable\n  %s\n\n' "$name"
+  printf 'Length\n  %s characters\n\n' "${#value}"
+
+  if is_sensitive_name "$name" && [[ "$reveal" != true ]]; then
+    printf 'Value\n  [masked: name looks sensitive]\n\n'
+    printf 'Press Alt-V to reveal explicitly.\n'
+    return 0
+  fi
+
+  if is_path_name "$name"; then
+    printf 'Entries\n'
+    IFS=':' read -r -a parts <<< "$value"
+    for part in "${parts[@]}"; do
+      printf '  '
+      print_escaped "$part"
+    done
+  else
+    printf 'Value\n  '
+    print_escaped "$value"
+  fi
+
+  if is_sensitive_name "$name"; then
+    printf '\nExplicit reveal is active. Press Alt-M to mask again.\n'
+  fi
+}
+
+copy_reference() {
+  local name="$1"
+  is_valid_name "$name" || return 1
+  printf '${%s}' "$name" | ff_copy
+}
+
+case "${1:-}" in
+  --metadata)
+    printf '10\tEnvironment variables\tBrowse exported names; sensitive-looking values are masked\n'
+    exit 0
+    ;;
+  --check)
+    exit 0
+    ;;
+  --list)
+    list_variables
+    exit 0
+    ;;
+  --preview)
+    preview_variable "${2:-}" false
+    exit $?
+    ;;
+  --preview-reveal)
+    preview_variable "${2:-}" true
+    exit $?
+    ;;
+  --copy-reference)
+    copy_reference "${2:-}"
+    exit $?
+    ;;
+  '') ;;
+  *)
+    printf 'ff environment: unknown internal option: %s\n' "$1" >&2
+    exit 2
+    ;;
+esac
+
+ff_require_fzf || exit 1
+
+script_q="$(ff_shell_quote "${BASH_SOURCE[0]}")"
+selection="$(list_variables | ff_fzf \
+  --delimiter=$'\t' \
+  --with-nth=1,2 \
+  --nth=1,2 \
+  --no-multi \
+  --prompt='env> ' \
+  --border-label=' FF · environment variables ' \
+  --header='Enter/Ctrl-Y: copy ${NAME}  ·  Alt-V: reveal  ·  Alt-M: mask  ·  Ctrl-/: preview' \
+  --preview="$script_q --preview {1}" \
+  --preview-window='right,60%,wrap' \
+  --bind="ctrl-y:execute-silent($script_q --copy-reference {1})+bell" \
+  --bind="alt-v:change-preview($script_q --preview-reveal {1})" \
+  --bind="alt-m:change-preview($script_q --preview {1})" \
+  --bind='ctrl-/:toggle-preview')" || exit $?
+
+[[ -n "$selection" ]] || exit 0
+name="${selection%%$'\t'*}"
+if copy_reference "$name"; then
+  printf 'Copied ${%s}\n' "$name"
+else
+  printf '${%s}\n' "$name"
+fi

@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+set -u
+
+MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)" || exit 1
+FF_ROOT="$(cd "$MODULE_DIR/.." >/dev/null 2>&1 && pwd)" || exit 1
+# shellcheck source=../lib/common.sh
+source "$FF_ROOT/lib/common.sh"
+
+is_valid_host() {
+  [[ -n "$1" && "$1" != -* && "$1" != *$'\n'* && "$1" != *$'\r'* && "$1" != *$'\t'* ]]
+}
+
+list_hosts() {
+  python3 "$FF_ROOT/lib/ssh_hosts.py"
+}
+
+preview_host() {
+  local host="$1"
+  local config
+  is_valid_host "$host" || return 1
+
+  printf 'Destination\n  %s\n\nResolved SSH configuration\n' "$host"
+  config="$(ssh -G -- "$host" 2>/dev/null)" || {
+    printf '  Unable to resolve SSH configuration.\n'
+    return 0
+  }
+
+  printf '%s\n' "$config" | awk '
+    $1 == "hostname" ||
+    $1 == "user" ||
+    $1 == "port" ||
+    $1 == "canonicalizehostname" ||
+    $1 == "proxyjump" ||
+    $1 == "proxycommand" ||
+    $1 == "identityfile" ||
+    $1 == "identitiesonly" {
+      key=$1
+      $1=""
+      sub(/^ /, "")
+      printf "  %-22s %s\n", key, $0
+    }
+  ' | ff_sanitize
+}
+
+copy_host() {
+  is_valid_host "$1" || return 1
+  printf '%s' "$1" | ff_copy
+}
+
+case "${1:-}" in
+  --metadata)
+    printf '20\tSSH hosts\tConnect using aliases from SSH config, known_hosts, and /etc/hosts\n'
+    exit 0
+    ;;
+  --check)
+    command -v ssh >/dev/null 2>&1 || {
+      printf 'ssh is not installed'
+      exit 1
+    }
+    command -v python3 >/dev/null 2>&1 || {
+      printf 'python3 is not installed'
+      exit 1
+    }
+    exit 0
+    ;;
+  --list)
+    list_hosts
+    exit $?
+    ;;
+  --preview)
+    preview_host "${2:-}"
+    exit $?
+    ;;
+  --copy-host)
+    copy_host "${2:-}"
+    exit $?
+    ;;
+  '') ;;
+  *)
+    printf 'ff ssh: unknown internal option: %s\n' "$1" >&2
+    exit 2
+    ;;
+esac
+
+"${BASH_SOURCE[0]}" --check || exit $?
+ff_require_fzf || exit 1
+
+script_q="$(ff_shell_quote "${BASH_SOURCE[0]}")"
+selection="$(list_hosts | ff_fzf \
+  --delimiter=$'\t' \
+  --with-nth=1,2 \
+  --nth=1,2 \
+  --no-multi \
+  --prompt='ssh> ' \
+  --border-label=' FF · SSH hosts ' \
+  --header='Enter: connect  ·  Ctrl-Y: copy host  ·  Ctrl-/: preview' \
+  --preview="$script_q --preview {1}" \
+  --preview-window='right,60%,wrap' \
+  --bind="ctrl-y:execute-silent($script_q --copy-host {1})+bell" \
+  --bind='ctrl-/:toggle-preview')" || exit $?
+
+[[ -n "$selection" ]] || exit 0
+host="${selection%%$'\t'*}"
+is_valid_host "$host" || exit 1
+
+exec ssh -- "$host"

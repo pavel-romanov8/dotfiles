@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -u
+
+resolve_source() {
+  local source_path="$1"
+  local source_dir
+
+  while [[ -h "$source_path" ]]; do
+    source_dir="$(cd -P "$(dirname "$source_path")" >/dev/null 2>&1 && pwd)" || return 1
+    source_path="$(readlink "$source_path")"
+    [[ "$source_path" = /* ]] || source_path="$source_dir/$source_path"
+  done
+
+  source_dir="$(cd -P "$(dirname "$source_path")" >/dev/null 2>&1 && pwd)" || return 1
+  printf '%s/%s\n' "$source_dir" "$(basename "$source_path")"
+}
+
+FF_SOURCE="$(resolve_source "${BASH_SOURCE[0]}")" || exit 1
+FF_ROOT="$(cd "$(dirname "$FF_SOURCE")/.." >/dev/null 2>&1 && pwd)" || exit 1
+FF_MODULE_DIR="$FF_ROOT/modules"
+# shellcheck source=../lib/common.sh
+source "$FF_ROOT/lib/common.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: ff
+
+Open the unified fuzzy workflow launcher.
+
+Options:
+  --list   Print registered workflows without opening fzf
+  -h, --help
+           Show this help
+EOF
+}
+
+build_menu() {
+  local module metadata order title description availability reason
+
+  for module in "$FF_MODULE_DIR"/*; do
+    [[ -f "$module" && -x "$module" ]] || continue
+
+    metadata="$("$module" --metadata 2>/dev/null)" || continue
+    IFS=$'\t' read -r order title description <<< "$metadata"
+    [[ -n "${order:-}" && -n "${title:-}" ]] || continue
+
+    availability=available
+    reason=''
+    if ! reason="$("$module" --check 2>&1)"; then
+      availability=unavailable
+      description="${description:-} [Unavailable: ${reason:-requirements not met}]"
+    fi
+
+    printf '%s\t%s\t%s\t%s\t%s\n' \
+      "$order" "$module" "$title" "${description:-}" "$availability"
+  done
+}
+
+case "${1:-}" in
+  '') ;;
+  --list)
+    build_menu | LC_ALL=C sort -n -k1,1 | cut -f3-4
+    exit 0
+    ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
+
+ff_require_fzf || exit 1
+
+selection="$({ build_menu | LC_ALL=C sort -n -k1,1; } | ff_fzf \
+  --delimiter=$'\t' \
+  --with-nth=3,4 \
+  --nth=3,4 \
+  --no-multi \
+  --prompt='workflow> ' \
+  --border-label=' FF · workflows ' \
+  --header='Enter: open  ·  Esc: cancel')" || exit $?
+
+[[ -n "$selection" ]] || exit 0
+
+IFS=$'\t' read -r _order module _title _description availability <<< "$selection"
+
+if [[ "$availability" != available ]]; then
+  reason="$("$module" --check 2>&1)" || true
+  printf 'ff: %s\n' "${reason:-workflow requirements are not met}" >&2
+  exit 1
+fi
+
+exec "$module"

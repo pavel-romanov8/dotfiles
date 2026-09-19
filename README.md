@@ -8,6 +8,7 @@ Shared terminal/editor file setup.
 - `yazi`
 - `wezterm`
 - `tmux`
+- `fzf` (one `ff` launcher for environment variables, SSH hosts, and Docker containers)
 - `pi` (GitHub dark/light themes; optional MCP adapter and permission rules)
 
 ## Setup
@@ -20,7 +21,25 @@ Run:
 
 This script symlinks the terminal/editor folders into `~/.config/<name>`. Pi themes are linked individually into `~/.pi/agent/themes/` (or `$PI_CODING_AGENT_DIR/themes/`). Existing unrelated pi themes, settings, credentials, and sessions are left alone.
 
-For tmux, it also creates `~/.tmux.conf` as a symlink to `~/.config/tmux/tmux.conf` so the config works on machines that still expect the legacy path.
+For tmux, it also creates `~/.tmux.conf` as a symlink to `~/.config/tmux/tmux.conf` so the config works on machines that still expect the legacy path. For fzf, it links the single public launcher at `~/.local/bin/ff`; internal workflow modules are not added to `PATH`.
+
+## fzf workflow launcher
+
+Run the single entry point:
+
+```bash
+ff
+```
+
+Inside tmux it opens in a centered popup; outside tmux it uses an inline window. The initial menu contains only:
+
+- **Environment variables** — browses exported names, masks sensitive-looking values, and copies `${NAME}` references. Use `Alt+V` to reveal a selected value explicitly and `Alt+M` to mask it again.
+- **SSH hosts** — collects aliases from recursive SSH `Include` files, `known_hosts`, and `/etc/hosts`; previews the resolved `ssh -G` configuration and connects on Enter.
+- **Docker containers** — lists running and stopped containers, previews recent logs, opens a shell on Enter, and supports start/stop with `Ctrl+S`.
+
+All views use `Ctrl+/` to toggle the preview and `Ctrl+Y` to copy the relevant identifier. Docker also uses `Ctrl+R` to reload. Destructive Docker actions are intentionally absent.
+
+`fzf`, `python3`, and the selected workflow's command (`ssh` or `docker`) must be installed. Unavailable workflows remain visible with an explanation. The existing generic fzf shell shortcuts such as `Ctrl+R`, `Ctrl+T`, and `Alt+C` are unchanged.
 
 ## Updating another machine
 
@@ -136,8 +155,9 @@ The template copies both enabled servers found in this machine's OpenCode config
   of OpenCode's `latest`; starts on demand and does not inherit arbitrary host
   environment variables (not an OS sandbox).
 - **GitHub**: `https://api.githubcopilot.com/mcp/`, using
-  `GITHUB_PERSONAL_ACCESS_TOKEN` from Pi's environment. Export your existing token
-  before launching Pi. No token is stored in Git, and no OAuth setup is needed.
+  `GITHUB_PERSONAL_ACCESS_TOKEN` from Pi's environment. Supply the token through
+  your preferred local credential mechanism before launching Pi; never store it
+  in this repository.
 
 OpenCode is untouched. This is a snapshot, not automatic synchronization; broad
 host-config discovery is off. Use `/mcp setup` to add servers later and `/mcp` to
