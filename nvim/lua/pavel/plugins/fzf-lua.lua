@@ -32,6 +32,13 @@ return {
   dependencies = { "nvim-tree/nvim-web-devicons" },
   cmd = "FzfLua",
   opts = {
+    previewers = {
+      bat = {
+        theme = function()
+          return vim.o.background == "light" and "GitHub Light Neovim" or "GitHub Dark Neovim"
+        end,
+      },
+    },
     files = {
       fd_opts = table.concat(fd_opts, " "),
       hidden = false,
@@ -45,7 +52,7 @@ return {
     { "<leader>ff", function() require("fzf-lua").files() end, desc = "Fuzzy find files in cwd" },
     { "<leader>fr", function() require("fzf-lua").oldfiles() end, desc = "Fuzzy find recent files" },
     { "<leader>fs", function() require("fzf-lua").live_grep_native() end, desc = "Find string in cwd" },
-    { "<leader>fc", function() require("fzf-lua").grep_cword() end, desc = "Find string under cursor in cwd" },
+    { "<leader>fc", function() require("fzf-lua").grep_cword({ previewer = "bat" }) end, desc = "Find string under cursor in cwd" },
     { "<leader>ft", function() require("fzf-lua").treesitter() end, desc = "Find symbols in current file" },
   },
 }

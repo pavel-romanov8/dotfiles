@@ -10,7 +10,7 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 # Add config directory names here as you add more tools
-CONFIGS=(nvim yazi wezterm tmux fzf)
+CONFIGS=(nvim yazi wezterm tmux fzf bat)
 
 mkdir -p "$CONFIG_DIR"
 
@@ -39,6 +39,13 @@ for name in "${CONFIGS[@]}"; do
     ln -s "$src" "$dest"
     echo "link: $dest -> $src"
 done
+
+if command -v bat >/dev/null 2>&1; then
+    bat cache --build >/dev/null
+    echo "Bat: custom GitHub themes cached."
+else
+    echo "skip: bat is not installed; custom themes will be cached on the next setup run" >&2
+fi
 
 # Expose only the unified fzf launcher. Internal workflow modules stay out of
 # PATH so there are no per-workflow commands to remember.

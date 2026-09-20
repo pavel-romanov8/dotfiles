@@ -9,6 +9,7 @@ Shared terminal/editor file setup.
 - `wezterm`
 - `tmux`
 - `fzf` (one `ff` launcher for environment variables, SSH hosts, and Docker containers)
+- `bat` (GitHub dark/light themes used by Neovim's fzf-lua preview)
 - `pi` (GitHub dark/light themes; optional MCP adapter and permission rules)
 
 ## Setup
@@ -19,7 +20,7 @@ Run:
 ./setup.sh
 ```
 
-This script symlinks the terminal/editor folders into `~/.config/<name>`. Pi themes are linked individually into `~/.pi/agent/themes/` (or `$PI_CODING_AGENT_DIR/themes/`). Existing unrelated pi themes, settings, credentials, and sessions are left alone.
+This script symlinks the terminal/editor folders into `~/.config/<name>`. It also rebuilds bat's cache when bat is installed, making the custom GitHub themes available. Pi themes are linked individually into `~/.pi/agent/themes/` (or `$PI_CODING_AGENT_DIR/themes/`). Existing unrelated pi themes, settings, credentials, and sessions are left alone.
 
 For tmux, it also creates `~/.tmux.conf` as a symlink to `~/.config/tmux/tmux.conf` so the config works on machines that still expect the legacy path. For fzf, it links the single public launcher at `~/.local/bin/ff`; internal workflow modules are not added to `PATH`.
 
@@ -75,6 +76,8 @@ Open Neovim and run `:Lazy restore`, `:MasonToolsInstallSync`, and `:checkhealth
 Neovim follows the detected system appearance by default. Use `<leader>ut` or `:Theme` to choose between Auto, Light, and Dark. The choice is saved per machine, so a manual override also survives restarts inside a VM.
 
 For direct access, use `:ThemeAuto`, `:ThemeLight`, `:ThemeDark`, or `:ThemeToggle`. `:ThemeSyncSystem` remains an alias for returning to Auto. In Auto mode, `NVIM_THEME=light|dark` and `WEZTERM_APPEARANCE=light|dark` take priority over host OS detection.
+
+The fzf-lua `<leader>fc` picker uses bat to avoid an upstream builtin-preview highlighting error. Its preview dynamically selects `GitHub Light Neovim` or `GitHub Dark Neovim` from `bat/themes/`, matching the active Neovim background. Run `./setup.sh` after changing those themes so `bat cache --build` refreshes bat's generated cache.
 
 ## WezTerm notes
 
