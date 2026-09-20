@@ -32,6 +32,7 @@ return {
   dependencies = { "nvim-tree/nvim-web-devicons" },
   cmd = "FzfLua",
   opts = {
+    fzf_colors = true,
     previewers = {
       bat = {
         theme = function()
