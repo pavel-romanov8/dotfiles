@@ -39,7 +39,7 @@ def configure(agent_dir):
 
     # Reject broken symlinks and invalid existing policies without modifying them.
     exists = os.path.lexists(policy)
-    text = policy.read_text() if exists else (root / "permissions.example.json").read_text()
+    text = policy.read_text() if exists else (root / "permissions.json").read_text()
     validate_policy(text)
     if not exists:
         policy.parent.mkdir(parents=True, exist_ok=True)

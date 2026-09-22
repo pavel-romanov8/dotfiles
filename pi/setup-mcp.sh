@@ -14,7 +14,7 @@ done
 
 # Validate before installation. Seed once; never overwrite private config or a
 # symlink (including a broken one). Re-running preserves /mcp customizations.
-python3 - "$PI_DIR/mcp.example.json" "$PI_AGENT_DIR/mcp.json" <<'PY'
+python3 - "$PI_DIR/mcp.json" "$PI_AGENT_DIR/mcp.json" <<'PY'
 import json
 import os
 from pathlib import Path

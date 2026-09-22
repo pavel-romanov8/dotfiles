@@ -112,7 +112,7 @@ git pull --ff-only
 ./setup.sh
 ```
 
-Setup links the theme files and automatically merges `pi/settings.example.json` into `~/.pi/agent/settings.json` (or `$PI_CODING_AGENT_DIR/settings.json`). It manages **only `theme` and `editorPaddingX`**, reapplying them on each run—including restoring Automatic after a manual theme selection. All other settings are preserved; credentials and sessions are untouched. Changed settings get a uniquely named private backup; unchanged settings are not rewritten. Invalid JSON is rejected rather than overwritten.
+Setup links the theme files and automatically merges the shared `pi/settings.json` configuration into `~/.pi/agent/settings.json` (or `$PI_CODING_AGENT_DIR/settings.json`). It manages **only `theme` and `editorPaddingX`**, reapplying them on each run—including restoring Automatic after a manual theme selection. All other settings are preserved; credentials and sessions are untouched. Changed settings get a uniquely named private backup; unchanged settings are not rewritten. Invalid JSON is rejected rather than overwritten.
 
 No manual wiring is needed on another machine after cloning and running setup. Pi installation and provider login remain machine-local. `setup.sh` also installs the other dotfiles configs, as before.
 
@@ -147,12 +147,13 @@ Optional setup, separate from `./setup.sh` (which still manages appearance only)
 ```
 
 This installs **`pi-mcp-adapter@2.34.0`** and seeds `~/.pi/agent/mcp.json`
-(or `$PI_CODING_AGENT_DIR/mcp.json`) from `pi/mcp.example.json` only when absent.
-Existing MCP configuration is preserved, not merged or overwritten. If already
-configured, add the example's servers manually or use `/mcp setup`. Close Pi
-before setup to avoid concurrent settings writes; restart afterward.
+(or `$PI_CODING_AGENT_DIR/mcp.json`) from the shared `pi/mcp.json` configuration
+only when absent. Existing MCP configuration is preserved, not merged or
+overwritten. If already configured, add the shared servers manually or use
+`/mcp setup`. Close Pi before setup to avoid concurrent settings writes; restart
+afterward.
 
-The template copies both enabled servers found in this machine's OpenCode config:
+The shared configuration defines both enabled servers from this machine's OpenCode config:
 
 - **Playwright**: local stdio via `npx -y @playwright/mcp@0.0.81`. Pinned instead
   of OpenCode's `latest`; starts on demand and does not inherit arbitrary host
@@ -199,10 +200,8 @@ provides source-backed recall, and replaces prepared compactions with a fast,
 deterministic memory projection. The shared configuration uses the current session
 model, keeps package defaults for observation/reflection cadence, and hides routine
 worker notifications. Installation is opt-in because background calls have provider
-usage and privacy implications. Normal `./setup.sh` does not install it.
-
-See **[pi/observational-memory.md](pi/observational-memory.md)** for every setting,
-tuning profiles, commands, security notes, update behavior, and removal.
+usage and privacy implications. Normal `./setup.sh` does not install it. The
+shared runtime settings live only in `pi/observational-memory.json`.
 
 ## Pi permission rules
 
@@ -213,11 +212,12 @@ python3 pi/setup_permissions.py
 ```
 
 Restart Pi or run `/reload`, then `/permissions`. Setup links the extension and
-seeds a private `~/.pi/agent/permissions.json` (or `$PI_CODING_AGENT_DIR`) only
-when absent; your existing rules and other extensions are preserved.
+seeds a private `~/.pi/agent/permissions.json` (or `$PI_CODING_AGENT_DIR`) from
+the shared `pi/permissions.json` configuration only when absent; your existing
+rules and other extensions are preserved.
 
 Unmatched actions are allowed by default, so policies only list exceptions. The
-seed policy asks before destructive file/Git operations such as `rm`,
+shared policy asks before destructive file/Git operations such as `rm`,
 `git reset --hard`, and `git push`, denies direct `sudo` commands, and asks for
 GitHub/Playwright calls (`GitHub/get_me` is allowed). Other MCP/custom-tool calls
 run without prompting. Compound shell calls are checked command by command, so
@@ -225,9 +225,11 @@ normal quoting, pipes, and redirections do not trigger approvals by themselves.
 MCP uses the adapter's per-call approval hook, without duplicate prompts.
 `/permissions clear` revokes exact-action session grants.
 
-See **[pi/permissions.md](pi/permissions.md)** for configuration, precedence,
-installation, tests, MCP coverage, and limitations. Global policy only; no
-sandboxing or new npm dependencies. `./setup.sh` remains appearance-only.
+The policy is global, not a sandbox, and adds no npm dependencies. Edit
+`pi/permissions.json` for the policy distributed to new machines; existing
+machine-local policies are intentionally preserved. Run
+`node --experimental-strip-types --test pi/tests/permissions.test.ts` to verify
+policy and extension behavior. `./setup.sh` remains appearance-only.
 
 ## tmux notes
 

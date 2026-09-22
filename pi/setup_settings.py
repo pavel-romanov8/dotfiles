@@ -16,7 +16,7 @@ def read_object(path):
 
 
 def configure(agent_dir):
-    managed = read_object(Path(__file__).with_name("settings.example.json"))
+    managed = read_object(Path(__file__).with_name("settings.json"))
     if set(managed) != {"theme", "editorPaddingX"}:
         raise ValueError("Only theme and editorPaddingX may be managed by dotfiles")
 

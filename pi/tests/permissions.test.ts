@@ -7,7 +7,7 @@ import { decide, decideBash, matches, parsePolicy, stableJSON, canonicalPath, pa
 import { PermissionGate } from "../extensions/permissions/gate.ts";
 import { registerPermissions, MCP_APPROVAL_EVENT } from "../extensions/permissions/extension.ts";
 
-const policy = parsePolicy(readFileSync(new URL("../permissions.example.json", import.meta.url), "utf8"));
+const policy = parsePolicy(readFileSync(new URL("../permissions.json", import.meta.url), "utf8"));
 const askAll = { permission: { "*": "ask" } };
 function fixture(t: any, initial: unknown = policy) {
   const dir = canonicalPath(mkdtempSync(join(tmpdir(), "pi-permissions-test-")));
