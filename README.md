@@ -10,7 +10,7 @@ Shared terminal/editor file setup.
 - `tmux`
 - `fzf` (one `ff` launcher for environment variables, SSH hosts, and Docker containers)
 - `bat` (GitHub dark/light themes used by Neovim's fzf-lua preview)
-- `pi` (GitHub dark/light themes; optional MCP adapter and permission rules)
+- `pi` (GitHub dark/light themes; optional MCP, observational memory, and permission extensions)
 
 ## Setup
 
@@ -178,6 +178,31 @@ do not gate server startup. Only load trusted extensions and MCP configurations.
 To remove the adapter, run `pi remove npm:pi-mcp-adapter`. Its machine-local MCP
 configuration remains available if you reinstall. Normal `./setup.sh` will not
 reinstall it.
+
+## Pi observational memory
+
+Optional long-session memory setup, separate from `./setup.sh`:
+
+```bash
+./pi/setup-observational-memory.sh
+```
+
+This installs the pinned **`pi-observational-memory@3.1.4`** package and merges
+the shared `pi/observational-memory.json` configuration into Pi settings. It
+compacts at 50% of the active model's context window, replaces the extension's
+configuration on each run, and preserves unrelated Pi settings. Close Pi before
+setup; afterward restart Pi (or run `/reload`), start a new session, and use
+`/om:status` to verify it.
+
+The extension records observations and reflections through background model calls,
+provides source-backed recall, and replaces prepared compactions with a fast,
+deterministic memory projection. The shared configuration uses the current session
+model, keeps package defaults for observation/reflection cadence, and hides routine
+worker notifications. Installation is opt-in because background calls have provider
+usage and privacy implications. Normal `./setup.sh` does not install it.
+
+See **[pi/observational-memory.md](pi/observational-memory.md)** for every setting,
+tuning profiles, commands, security notes, update behavior, and removal.
 
 ## Pi permission rules
 

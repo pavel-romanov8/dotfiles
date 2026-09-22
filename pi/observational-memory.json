@@ -1,0 +1,7 @@
+{
+  "observational-memory": {
+    "compactAfterTokensMode": "ratio",
+    "compactAfterTokensRatio": 0.5,
+    "showWorkerNotifications": false
+  }
+}
