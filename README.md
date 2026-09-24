@@ -71,6 +71,25 @@ rm -rf \
 
 Open Neovim and run `:Lazy restore`, `:MasonToolsInstallSync`, and `:checkhealth nvim-treesitter`. Wait for parser installation to finish, then run `ya pkg install` in the shell.
 
+### Rust development
+
+Rust language support uses rustaceanvim with the rustup-provided `rust-analyzer`, so the analyzer follows a project's pinned toolchain. Install the toolchain and required components outside Mason:
+
+```bash
+rustup toolchain install stable --profile default
+rustup default stable
+rustup component add rust-analyzer rustfmt clippy
+```
+
+On macOS, `rustup` and the optional faster test runner can be installed with Homebrew; ensure Homebrew's keg-only rustup `bin` directory is in `PATH`:
+
+```bash
+brew install rustup cargo-nextest
+export PATH="$(brew --prefix rustup)/bin:$PATH"
+```
+
+Neovim installs Taplo and CodeLLDB through Mason. Rust support includes Tree-sitter highlighting, completion and diagnostics, Clippy checks, format-on-save with rustfmt, inlay hints, Cargo dependency assistance, runnables, tests through neotest, and DAP debugging. Use `:checkhealth rustaceanvim` after opening a Rust project.
+
 ## Neovim theme mode
 
 Neovim follows the detected system appearance by default. Use `<leader>ut` or `:Theme` to choose between Auto, Light, and Dark. The choice is saved per machine, so a manual override also survives restarts inside a VM.

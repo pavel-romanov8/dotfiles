@@ -25,13 +25,40 @@ return {
 		})
 
 		mason_lspconfig.setup({
-			automatic_installation = true,
+			-- Keep installation deterministic and let lspconfig.lua decide what is enabled.
+			-- rust-analyzer intentionally comes from rustup so it follows per-project toolchains.
+			ensure_installed = {
+				"angularls",
+				"ansiblels",
+				"ast_grep",
+				"astro",
+				"css_variables",
+				"cssls",
+				"cssmodules_ls",
+				"docker_compose_language_service",
+				"dockerls",
+				"emmet_ls",
+				"golangci_lint_ls",
+				"gopls",
+				"graphql",
+				"html",
+				"lua_ls",
+				"mdx_analyzer",
+				"prismals",
+				"pyright",
+				"ruff",
+				"svelte",
+				"tailwindcss",
+				"taplo",
+				"terraformls",
+				"ts_ls",
+			},
+			automatic_enable = false,
 		})
 
 		mason_tool_installer.setup({
 			ensure_installed = {
-				"pyright",
-				"ruff",
+				"codelldb",
 				"prettierd",
 				"eslint_d",
 				"stylua",

@@ -200,6 +200,7 @@ return {
 			"ast_grep",
 			"astro",
 			"mdx_analyzer",
+			"taplo",
 			"ansiblels",
 			"terraformls",
 			"docker_compose_language_service",
@@ -234,6 +235,8 @@ return {
 			-- GraphQL/MDX
 			"graphql",
 			"mdx_analyzer",
+			-- TOML and Cargo manifests
+			"taplo",
 			-- Go
 			"gopls",
 			"golangci_lint_ls",

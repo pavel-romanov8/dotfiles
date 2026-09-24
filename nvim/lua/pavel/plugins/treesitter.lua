@@ -20,6 +20,7 @@ local parsers = {
 	"python",
 	"query",
 	"regex",
+	"rust",
 	"scss",
 	"svelte",
 	"terraform",

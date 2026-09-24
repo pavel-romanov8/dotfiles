@@ -21,12 +21,18 @@ return {
 				lua = { "stylua" },
 				python = { "ruff_organize_imports", "ruff_format" },
 				go = { "gofumpt" },
+				rust = { "rustfmt", lsp_format = "fallback" },
+				toml = { "taplo" },
+			},
+			format_on_save = {
+				lsp_format = "fallback",
+				timeout_ms = 1000,
 			},
 		})
 
 		vim.keymap.set({ "n", "v" }, "<leader>mp", function()
 			conform.format({
-				lsp_fallback = true,
+				lsp_format = "fallback",
 				async = false,
 				timeout_ms = 1000,
 			})
