@@ -50,6 +50,7 @@ Each plugin configuration file returns a Lazy.nvim plugin specification table.
 - Python: `pyright`
 - Go: `gopls`, `golangci_lint_ls`
 - Rust: `rust-analyzer` via rustaceanvim; Taplo for Cargo/TOML files
+- C/C++: `clangd`; CMake: `neocmake`
 - Web: `html`, `cssls`, `tailwindcss`, `svelte`, `astro`
 - Lua: `lua_ls`
 - Infrastructure: `terraformls`, `ansiblels`, `dockerls`
@@ -59,6 +60,7 @@ Each plugin configuration file returns a Lazy.nvim plugin specification table.
 - Python: `black`, `isort`, `pylint`
 - Go: `goimports-reviser`, `gofumpt`, `golangci-lint`
 - Rust/TOML: `rustfmt`, `clippy`, `taplo`
+- C/C++: `clang-format`, clangd-integrated `clang-tidy`
 - Lua: `stylua`
 
 ## Adding New Plugins

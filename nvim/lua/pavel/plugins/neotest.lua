@@ -6,6 +6,7 @@ return {
 		"antoinemadec/FixCursorHold.nvim",
 		"nvim-treesitter/nvim-treesitter",
 		"mrcjkb/rustaceanvim",
+		"orjangj/neotest-ctest",
 	},
 	keys = {
 		{
@@ -62,6 +63,9 @@ return {
 		require("neotest").setup({
 			adapters = {
 				require("rustaceanvim.neotest"),
+				require("neotest-ctest").setup({
+					dap_adapter = "codelldb",
+				}),
 			},
 		})
 	end,

@@ -18,6 +18,7 @@ return {
 				-- Buffer local mappings.
 				-- See `:help vim.lsp.*` for documentation on any of the below functions
 				local opts = { buffer = ev.buf, silent = true }
+				local client = vim.lsp.get_client_by_id(ev.data.client_id)
 
 				-- set keybinds
 				opts.desc = "Show LSP references"
@@ -78,6 +79,35 @@ return {
 					-- Optional feedback to confirm it ran
 					vim.notify("Imports organized!", vim.log.levels.INFO, { title = "LSP" })
 				end, opts) -- IMPORTANT: Pass the 'opts' table here
+
+				if client and client.name == "clangd" then
+					local function clangd_map(lhs, rhs, desc)
+						keymap.set("n", lhs, rhs, { buffer = ev.buf, silent = true, desc = desc })
+					end
+
+					clangd_map("<leader>ch", "<cmd>LspClangdSwitchSourceHeader<CR>", "Switch C/C++ source and header")
+					clangd_map("<leader>cs", "<cmd>LspClangdShowSymbolInfo<CR>", "Show C/C++ symbol info")
+					clangd_map("<leader>cI", function()
+						require("fzf-lua").lsp_incoming_calls()
+					end, "Show incoming calls")
+					clangd_map("<leader>cO", function()
+						require("fzf-lua").lsp_outgoing_calls()
+					end, "Show outgoing calls")
+					clangd_map("<leader>ct", function()
+						require("fzf-lua").lsp_type_sub()
+					end, "Show C/C++ subtypes")
+					clangd_map("<leader>cT", function()
+						require("fzf-lua").lsp_type_super()
+					end, "Show C/C++ supertypes")
+					clangd_map("<leader>ci", function()
+						local enabled = vim.lsp.inlay_hint.is_enabled({ bufnr = ev.buf })
+						vim.lsp.inlay_hint.enable(not enabled, { bufnr = ev.buf })
+					end, "Toggle C/C++ inlay hints")
+
+					if client:supports_method("textDocument/inlayHint", ev.buf) then
+						vim.lsp.inlay_hint.enable(true, { bufnr = ev.buf })
+					end
+				end
 			end,
 		})
 
@@ -164,6 +194,24 @@ return {
 			},
 		})
 
+		-- C and C++ language server. Project-specific flags belong in
+		-- compile_commands.json/compile_flags.txt and optional .clangd files.
+		vim.lsp.config("clangd", {
+			capabilities = capabilities,
+			cmd = {
+				"clangd",
+				"--background-index",
+				"--clang-tidy",
+				"--completion-style=detailed",
+				"--header-insertion=iwyu",
+			},
+		})
+
+		-- CMake completion, diagnostics, navigation, and formatting.
+		vim.lsp.config("neocmake", {
+			capabilities = capabilities,
+		})
+
 		-- Ruff (Python linting/formatting) - disable hover in favor of pyright
 		vim.lsp.config("ruff", {
 			capabilities = capabilities,
@@ -216,6 +264,9 @@ return {
 
 		-- Enable all configured servers
 		vim.lsp.enable({
+			-- C, C++, and CMake
+			"clangd",
+			"neocmake",
 			-- Python
 			"ruff",
 			"pyright",

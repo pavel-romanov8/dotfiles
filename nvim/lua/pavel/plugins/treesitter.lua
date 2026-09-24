@@ -1,8 +1,11 @@
 local parsers = {
 	"bash",
 	"c",
+	"cmake",
+	"cpp",
 	"css",
 	"dockerfile",
+	"doxygen",
 	"go",
 	"gomod",
 	"gosum",

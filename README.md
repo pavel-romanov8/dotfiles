@@ -90,6 +90,34 @@ export PATH="$(brew --prefix rustup)/bin:$PATH"
 
 Neovim installs Taplo and CodeLLDB through Mason. Rust support includes Tree-sitter highlighting, completion and diagnostics, Clippy checks, format-on-save with rustfmt, inlay hints, Cargo dependency assistance, runnables, tests through neotest, and DAP debugging. Use `:checkhealth rustaceanvim` after opening a Rust project.
 
+### C and C++ development
+
+Neovim installs clangd, clang-format, neocmakelsp, and CodeLLDB through Mason. Install a compiler and CMake/CTest outside Neovim; Ninja is recommended:
+
+```bash
+# macOS
+brew install cmake ninja
+
+# Ubuntu/Debian
+sudo apt install build-essential cmake ninja-build
+```
+
+The integration includes clangd completion, navigation, clang-tidy diagnostics and fixes, include insertion, inlay hints, clang-format on save, CMake editing/build/run workflows, CodeLLDB debugging, and CTest discovery through neotest. CMake generation exports and links `compile_commands.json` into the project root for clangd.
+
+Common CMake mappings:
+
+| Mapping | Action |
+| --- | --- |
+| `<leader>mg` | Configure/generate |
+| `<leader>mb` | Build selected target |
+| `<leader>mB` | Select build target |
+| `<leader>mL` | Select launch target |
+| `<leader>mr` | Build and run launch target |
+| `<leader>md` | Build and debug launch target |
+| `<leader>mo` | Open build output |
+
+Use `<leader>ch` to switch between a source and header, `<leader>ci` to toggle clangd inlay hints, and the existing `<leader>n…` mappings to run or debug CTest-discovered tests. Projects not using CMake should provide `compile_commands.json` by another build-system-native mechanism or with a tool such as Bear. Keep project policy in `.clangd`, `.clang-format`, and `.clang-tidy` files.
+
 ## Neovim theme mode
 
 Neovim follows the detected system appearance by default. Use `<leader>ut` or `:Theme` to choose between Auto, Light, and Dark. The choice is saved per machine, so a manual override also survives restarts inside a VM.

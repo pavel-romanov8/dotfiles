@@ -32,6 +32,7 @@ return {
 				"ansiblels",
 				"ast_grep",
 				"astro",
+				"clangd",
 				"css_variables",
 				"cssls",
 				"cssmodules_ls",
@@ -44,6 +45,7 @@ return {
 				"html",
 				"lua_ls",
 				"mdx_analyzer",
+				"neocmake",
 				"prismals",
 				"pyright",
 				"ruff",
@@ -58,6 +60,7 @@ return {
 
 		mason_tool_installer.setup({
 			ensure_installed = {
+				"clang-format",
 				"codelldb",
 				"prettierd",
 				"eslint_d",

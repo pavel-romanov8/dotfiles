@@ -6,6 +6,11 @@ return {
 
 		conform.setup({
 			formatters_by_ft = {
+				c = { "clang-format" },
+				cpp = { "clang-format" },
+				objc = { "clang-format" },
+				objcpp = { "clang-format" },
+				cuda = { "clang-format" },
 				javascript = { "prettierd" },
 				typescript = { "prettierd" },
 				javascriptreact = { "prettierd" },
