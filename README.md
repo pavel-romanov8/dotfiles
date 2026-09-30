@@ -10,7 +10,7 @@ Shared terminal/editor file setup.
 - `tmux`
 - `fzf` (one `ff` launcher for environment variables, SSH hosts, and Docker containers)
 - `bat` (GitHub dark/light themes used by Neovim's fzf-lua preview)
-- `pi` (GitHub dark/light themes; optional MCP, observational memory, and permission extensions)
+- `pi` (GitHub dark/light themes; built-in MCP setup, optional observational memory and permission extension)
 
 ## Setup
 
@@ -185,47 +185,35 @@ Theme sources: `pi/themes/github-{light,dark}.json`. Editing the active theme ho
 
 To revert pi's appearance, set `theme` to `light/dark` (built-in automatic pair) and `editorPaddingX` to `0`. WezTerm's light-scheme override is still available, but another palette may no longer match pi.
 
-## Pi MCP trial
+## Pi MCP (built in)
 
-Optional setup, separate from `./setup.sh` (which still manages appearance only):
+Optional setup, separate from appearance-only `./setup.sh`:
 
 ```bash
 ./pi/setup-mcp.sh
+pi mcp list
 ```
 
-This installs **`pi-mcp-adapter@2.34.0`** and seeds `~/.pi/agent/mcp.json`
-(or `$PI_CODING_AGENT_DIR/mcp.json`) from the shared `pi/mcp.json` configuration
-only when absent. Existing MCP configuration is preserved, not merged or
-overwritten. If already configured, add the shared servers manually or use
-`/mcp setup`. Close Pi before setup to avoid concurrent settings writes; restart
-afterward.
+The script seeds `~/.pi/agent/mcp.json` (or `$PI_CODING_AGENT_DIR/mcp.json`)
+from `pi/mcp.json` **only if absent**. Existing private config is not overwritten;
+add servers manually with `pi mcp add` or edit the file. No MCP package is
+installed. For machines with the former `pi-mcp-adapter`, follow
+[the migration guide](pi/MCP-MIGRATION.md) **before** removing it.
 
-The shared configuration defines both enabled servers from this machine's OpenCode config:
+- **Playwright**: local stdio via `npx -y @playwright/mcp@0.0.81`. Native Pi starts
+  enabled stdio servers at session startup (not lazily) and inherits the process
+  environment; it is not sandboxed. The browser may need installing separately.
+- **GitHub**: `https://api.githubcopilot.com/mcp/`, with `Authorization: Bearer
+  ${GITHUB_PERSONAL_ACCESS_TOKEN}`. Provide the token in Pi's environment before
+  launch; never put a token in this repository. Use a private `!command` header
+  instead if your credential manager supplies the token.
 
-- **Playwright**: local stdio via `npx -y @playwright/mcp@0.0.81`. Pinned instead
-  of OpenCode's `latest`; starts on demand and does not inherit arbitrary host
-  environment variables (not an OS sandbox).
-- **GitHub**: `https://api.githubcopilot.com/mcp/`, using
-  `GITHUB_PERSONAL_ACCESS_TOKEN` from Pi's environment. Supply the token through
-  your preferred local credential mechanism before launching Pi; never store it
-  in this repository.
-
-OpenCode is untouched. This is a snapshot, not automatic synchronization; broad
-host-config discovery is off. Use `/mcp setup` to add servers later and `/mcp` to
-inspect status, reconnect, or enable/disable servers. Lazy servers may initially
-show as not connected; connecting discovers their tools without executing them.
-Playwright may need its browser installed on a new machine.
-
-Without the permission extension below, MCP tool calls ask **Allow once / Allow
-for session / Deny** through the adapter. Calls requiring approval fail closed
-without a UI. Scripting and model sampling are disabled for this initial trial.
-The optional permission extension unifies Bash and MCP decisions; otherwise shell
-execution retains Pi's existing behavior. Approval gates are not a sandbox and
-do not gate server startup. Only load trusted extensions and MCP configurations.
-
-To remove the adapter, run `pi remove npm:pi-mcp-adapter`. Its machine-local MCP
-configuration remains available if you reinstall. Normal `./setup.sh` will not
-reinstall it.
+OpenCode is untouched; this is a snapshot, not automatic synchronization. After
+setup, use `/reload` (or restart), `/mcp` for status/reconnect/exposure, and
+`pi mcp list` to check connections. The default `codemode` exposure keeps large
+MCP tool lists out of the model's direct tool declarations. MCP calls are not
+subject to extra approval prompts by default; access is governed by server-side
+permissions. Only load trusted servers and extensions.
 
 ## Pi observational memory
 
@@ -265,11 +253,13 @@ rules and other extensions are preserved.
 
 Unmatched actions are allowed by default, so policies only list exceptions. The
 shared policy asks before destructive file/Git operations such as `rm`,
-`git reset --hard`, and `git push`, denies direct `sudo` commands, and asks for
-GitHub/Playwright calls (`GitHub/get_me` is allowed). Other MCP/custom-tool calls
-run without prompting. Compound shell calls are checked command by command, so
-normal quoting, pipes, and redirections do not trigger approvals by themselves.
-MCP uses the adapter's per-call approval hook, without duplicate prompts.
+`git reset --hard`, and `git push`, and denies direct `sudo` commands. **MCP
+calls and resource reads are allowed without extra prompts**; rely on the
+server-side access policy. Other custom tools also run without prompting.
+Compound shell calls are checked command by command, so normal quoting, pipes,
+and redirections do not trigger approvals by themselves. Native MCP calls,
+including nested `codemode` calls, still pass through Pi's `tool_call` hook if
+you choose to add explicit rules later.
 `/permissions clear` revokes exact-action session grants.
 
 The policy is global, not a sandbox, and adds no npm dependencies. Edit

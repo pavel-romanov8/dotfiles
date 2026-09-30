@@ -43,8 +43,9 @@ class McpSetupTests(unittest.TestCase):
         target = self.agent / "mcp.json"
         config = json.loads(target.read_text())
         self.assertEqual(set(config["mcpServers"]), {"playwright", "GitHub"})
-        self.assertTrue(config["settings"]["approveTools"])
-        self.assertFalse(config["settings"]["scriptMode"])
+        self.assertNotIn("settings", config)
+        self.assertEqual(config["mcpServers"]["GitHub"]["headers"]["Authorization"], "Bearer ${GITHUB_PERSONAL_ACCESS_TOKEN}")
+        self.assertNotIn("lifecycle", config["mcpServers"]["playwright"])
         self.assertEqual(target.stat().st_mode & 0o777, 0o600)
         self.assertNotIn(self.env["GITHUB_PERSONAL_ACCESS_TOKEN"], target.read_text())
         self.assertNotIn(self.env["GITHUB_PERSONAL_ACCESS_TOKEN"], result.stdout)
@@ -52,9 +53,9 @@ class McpSetupTests(unittest.TestCase):
         original = target.read_bytes()
         self.assertEqual(self.run_setup().returncode, 0)
         self.assertEqual(target.read_bytes(), original)
-        self.assertIn("install npm:pi-mcp-adapter@2.34.0", (self.root / "pi-invocations").read_text())
+        self.assertFalse((self.root / "pi-invocations").exists())
 
-    def test_invalid_existing_config_stops_before_install(self):
+    def test_invalid_existing_config_stops_without_changes(self):
         self.agent.mkdir()
         target = self.agent / "mcp.json"
         target.write_text("invalid json")

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Optional MCP trial; deliberately separate from the appearance-only setup.sh.
+# Seed Pi's built-in MCP configuration; separate from appearance-only setup.sh.
 set -euo pipefail
 
 PI_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -12,8 +12,8 @@ for tool in pi python3 npx; do
     }
 done
 
-# Validate before installation. Seed once; never overwrite private config or a
-# symlink (including a broken one). Re-running preserves /mcp customizations.
+# Seed once; never overwrite private config or a symlink (including a broken
+# one). Re-running preserves /mcp customizations.
 python3 - "$PI_DIR/mcp.json" "$PI_AGENT_DIR/mcp.json" <<'PY'
 import json
 import os
@@ -39,11 +39,8 @@ except (OSError, ValueError) as error:
     sys.exit(f"MCP setup stopped: {error}")
 PY
 
-# Pi merges this package into existing settings; provider/appearance settings stay.
-# Run outside any project so package installation cannot load project resources.
-(cd "$PI_AGENT_DIR" && npm_config_ignore_scripts=true pi --no-approve install npm:pi-mcp-adapter@2.34.0)
-
-echo 'Pi MCP: restart Pi, then run /mcp to inspect the servers.'
+echo 'Pi MCP: restart Pi (or /reload), then run /mcp to inspect the servers.'
+echo 'If pi-mcp-adapter is still installed, migrate your private config and permissions first; then run pi remove npm:pi-mcp-adapter.'
 if [ -z "${GITHUB_PERSONAL_ACCESS_TOKEN:-}" ]; then
-    echo 'GitHub: export GITHUB_PERSONAL_ACCESS_TOKEN before launching Pi (never commit the token).'
+    echo 'GitHub (shared template): export GITHUB_PERSONAL_ACCESS_TOKEN before launching Pi, or configure a private credential header.'
 fi

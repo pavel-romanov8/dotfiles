@@ -16,9 +16,6 @@
       "git push*": "ask",
       "sudo": "deny",
       "sudo *": "deny"
-    },
-    "GitHub/*": "ask",
-    "GitHub/get_me": "allow",
-    "playwright/*": "ask"
+    }
   }
 }

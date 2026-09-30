@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { decide, decideBash, matches, parsePolicy, stableJSON, canonicalPath, pathInputs, display } from "../extensions/permissions/policy.ts";
 import { PermissionGate } from "../extensions/permissions/gate.ts";
-import { registerPermissions, MCP_APPROVAL_EVENT } from "../extensions/permissions/extension.ts";
+import { registerPermissions } from "../extensions/permissions/extension.ts";
 
 const policy = parsePolicy(readFileSync(new URL("../permissions.json", import.meta.url), "utf8"));
 const askAll = { permission: { "*": "ask" } };
@@ -37,23 +37,23 @@ test("strict policy validation", () => {
 });
 
 test("anchored glob literals, wildcards and case sensitivity", () => {
-  assert.ok(matches("GitHub/*", "GitHub/get_me"));
+  assert.ok(matches("mcp__GitHub__*", "mcp__GitHub__get_me"));
   assert.ok(matches("a?c*", "abc"));
   assert.ok(matches("*a*b", "xxayb"));
   assert.ok(matches("*.env", "nested/.env"));
   assert.ok(matches("a.b", "a.b"));
   assert.ok(!matches("a.b", "axb"));
-  assert.ok(!matches("GitHub/*", "github/get_me"));
+  assert.ok(!matches("mcp__GitHub__*", "mcp__github__get_me"));
   assert.ok(!matches("sudo *", "echo sudo test"));
 });
 
 test("last matching rule wins at both levels; nested misses retain fallback", () => {
-  const p = parsePolicy('{"permission":{"*":"ask","bash":{"*":"deny","git *":"allow","git push*":"ask"},"GitHub/*":"deny","GitHub/get_me":"allow"}}');
+  const p = parsePolicy('{"permission":{"*":"ask","bash":{"*":"deny","git *":"allow","git push*":"ask"},"mcp__GitHub__*":"deny","mcp__GitHub__get_me":"allow"}}');
   assert.equal(decide(p, "bash", ["git status"]).action, "allow");
   assert.equal(decide(p, "bash", ["git push origin main"]).action, "ask");
   assert.equal(decide(p, "bash", ["rm file"]).action, "deny");
-  assert.equal(decide(p, "GitHub/get_me", ["{}"]).action, "allow");
-  assert.equal(decide(p, "GitHub/delete_repository", ["{}"]).action, "deny");
+  assert.equal(decide(p, "mcp__GitHub__get_me", ["{}"]).action, "allow");
+  assert.equal(decide(p, "mcp__GitHub__delete_repository", ["{}"]).action, "deny");
   assert.equal(decide(parsePolicy('{"permission":{"*":"deny","bash":{"pwd":"allow"}}}'), "bash", ["ls"]).action, "deny");
 });
 
@@ -138,12 +138,12 @@ test("explicit ask rules fail closed on dismissal, denial, UI errors and no UI",
 test("session grants match exact args, tool, cwd and policy, and can be cleared", async t => {
   const f = fixture(t, askAll);
   f.choose(async () => "Allow exact action for session");
-  const req = { tool: "GitHub/search", input: { b: 2, a: 1 } };
+  const req = { tool: "mcp__GitHub__search", input: { b: 2, a: 1 } };
   assert.ok((await f.gate.authorize(req, f.ctx)).allowed);
   assert.ok((await f.gate.authorize({ ...req, input: { a: 1, b: 2 } }, f.ctx)).allowed);
   assert.equal(f.prompts(), 1);
   await f.gate.authorize({ ...req, input: { a: 1 } }, f.ctx);
-  await f.gate.authorize({ ...req, tool: "GitHub/write" }, f.ctx);
+  await f.gate.authorize({ ...req, tool: "mcp__GitHub__write" }, f.ctx);
   await f.gate.authorize(req, { ...f.ctx, cwd: join(f.dir, "other") });
   assert.equal(f.prompts(), 4);
   f.gate.clear();
@@ -182,7 +182,7 @@ test("policy changes during approval invalidate that approval", async t => {
 
 test("arguments changing during approval invalidate that approval", async t => {
   const f = fixture(t, askAll);
-  const request = { tool: "GitHub/action", input: { name: "original" } };
+  const request = { tool: "mcp__GitHub__action", input: { name: "original" } };
   f.choose(async () => { request.input.name = "changed"; return "Allow once"; });
   assert.ok(!(await f.gate.authorize(request, f.ctx)).allowed);
 });
@@ -207,7 +207,7 @@ test("parallel MCP approvals serialize and reuse only exact grants", async t => 
     active--;
     return "Allow exact action for session";
   });
-  const req = { tool: "GitHub/action", input: {} };
+  const req = { tool: "mcp__GitHub__action", input: {} };
   const results = await Promise.all([f.gate.authorize(req, f.ctx), f.gate.authorize(req, f.ctx), f.gate.authorize({ ...req, input: { x: 1 } }, f.ctx)]);
   assert.ok(results.every(r => r.allowed));
   assert.equal(maxActive, 1);
@@ -222,12 +222,11 @@ test("large approval details block rather than hide arguments", async t => {
 
 function extensionFixture(t: any) {
   const f = fixture(t);
-  const hooks = new Map<string, any>(), commands = new Map<string, any>(), listeners = new Map<string, any>();
+  const hooks = new Map<string, any>(), commands = new Map<string, any>();
   const tools: any[] = [];
   const messages: any[] = [];
   const pi: any = {
     on: (event: string, handler: any) => hooks.set(event, handler),
-    events: { on: (event: string, handler: any) => { listeners.set(event, handler); return () => listeners.delete(event); } },
     getAllTools: () => tools,
     registerCommand: (name: string, command: any) => commands.set(name, command),
     sendMessage: (message: any) => messages.push(message),
@@ -237,63 +236,63 @@ function extensionFixture(t: any) {
   mkdirSync(root);
   registerPermissions(pi, f.dir, root);
   hooks.get("session_start")({}, ctx);
-  const call = (toolName: string, input: any) => hooks.get("tool_call")({ toolName, input }, ctx);
-  const mcp = async (serverName: string, originalToolName: string, args: any = {}) => {
-    let handler: any;
-    listeners.get(MCP_APPROVAL_EVENT)({ serverName, originalToolName, args, claim: (fn: any) => { handler = fn; return true; } });
-    assert.ok(handler, "broker must claim synchronously");
-    return handler();
-  };
-  return { ...f, ctx, root, hooks, commands, tools, listeners, messages, call, mcp };
+  const call = (toolName: string, input: any = {}, parentToolCallId?: string) =>
+    hooks.get("tool_call")({ toolName, input, parentToolCallId }, ctx);
+  return { ...f, ctx, root, hooks, commands, tools, messages, call };
 }
 
 test("extension protects config/code and symlink aliases, not normal edits", async t => {
   const f = extensionFixture(t);
   f.choose(async () => "Deny");
   assert.equal(await f.call("write", { path: "ordinary.txt", content: "hello" }), undefined);
-  for (const path of [f.path, join(f.root, "index.ts"), join(f.dir, "settings.json"), join(f.dir, "extensions/new.ts"), join(f.dir, "mcp.json")]) {
+  for (const path of [f.path, join(f.root, "index.ts"), join(f.dir, "settings.json"), join(f.dir, "extensions/new.ts"), join(f.dir, "mcp.json"), join(f.dir, "mcp-auth.json")]) {
     assert.equal((await f.call("write", { path, content: "hello" })).block, true);
   }
   symlinkSync(f.path, join(f.dir, "alias.json"));
   assert.equal((await f.call("edit", { path: "@alias.json", edits: [] })).block, true);
 });
 
-test("MCP uses original server/tool names and broker rejects despite fallback grants", async t => {
-  const f = extensionFixture(t);
-  assert.equal(await f.mcp("GitHub", "get_me"), "allow_once");
-  f.choose(async () => "Deny");
-  assert.equal(await f.mcp("GitHub", "create_repository", { name: "example" }), "deny");
-  f.save({ permission: { "*": "deny" } });
-  assert.equal(await f.mcp("GitHub", "get_me"), "deny");
-});
-
-test("adapter surfaces defer to broker, install asks, unrelated lookalikes do not bypass", async t => {
+test("native MCP direct, nested and resource calls are allowed without prompts", async t => {
   const f = extensionFixture(t);
   f.choose(async () => "Deny");
-  for (const name of ["mcp", "mcp__GitHub", "mcpScript", "GitHub_get_me"]) {
-    f.tools.push({ name, sourceInfo: { source: "npm:pi-mcp-adapter@2.34.0" } });
-    assert.equal(await f.call(name, name === "mcp" ? { tool: "GitHub_get_me", args: {} } : {}), undefined);
-  }
+  assert.equal(await f.call("mcp__GitHub__get_me"), undefined);
+  assert.equal(await f.call("mcp__GitHub__create_repository", { name: "example" }), undefined);
+  assert.equal(await f.call("mcp__playwright__browser_navigate", { url: "https://example.com" }, "parent/1"), undefined);
+  assert.equal(await f.call("read_mcp_resource", { server: "GitHub", uri: "repo://secret" }), undefined);
+  assert.equal(await f.call("list_mcp_resources", {}), undefined);
   assert.equal(f.prompts(), 0);
-  assert.equal((await f.call("mcp", { action: "install", url: "https://example.com/mcp" })).block, true);
-  f.tools.length = 0;
-  f.save({ permission: { "mcp__GitHub": "ask" } });
-  assert.equal((await f.call("mcp__GitHub", { tool: "get_me" })).block, true);
+  f.save({ permission: { "mcp__*": "ask", "read_mcp_resource": "ask" } });
+  assert.equal((await f.call("mcp__GitHub__get_me")).block, true);
+  assert.equal((await f.call("read_mcp_resource", { server: "GitHub", uri: "repo://secret" })).block, true);
 });
 
-test("commands inspect/clear and tree navigation clear broker grants; shutdown unsubscribes", async t => {
+test("optional native MCP rules still use exact grants and revoke on tree navigation", async t => {
   const f = extensionFixture(t);
+  f.save({ permission: { "mcp__*": "ask" } });
   f.choose(async () => "Allow exact action for session");
-  await f.mcp("GitHub", "create_repository", { name: "example" });
-  await f.mcp("GitHub", "create_repository", { name: "example" });
+  const args = { name: "example" };
+  await f.call("mcp__GitHub__create_repository", args);
+  await f.call("mcp__GitHub__create_repository", args, "codemode/1");
+  assert.equal(f.prompts(), 1);
+  await f.call("mcp__GitHub__create_repository", { name: "other" });
+  f.hooks.get("session_tree")({}, f.ctx);
+  await f.call("mcp__GitHub__create_repository", args);
+  assert.equal(f.prompts(), 3);
+});
+
+test("commands inspect/clear and tree navigation clear optional grants", async t => {
+  const f = extensionFixture(t);
+  f.save({ permission: { "mcp__*": "ask" } });
+  f.choose(async () => "Allow exact action for session");
+  await f.call("mcp__GitHub__create_repository", { name: "example" });
+  await f.call("mcp__GitHub__create_repository", { name: "example" });
   assert.equal(f.prompts(), 1);
   await f.commands.get("permissions").handler("", f.ctx);
   assert.match(f.messages[0].content, /Exact-action session approvals: 1/);
   await f.commands.get("permissions").handler("clear", f.ctx);
-  await f.mcp("GitHub", "create_repository", { name: "example" });
+  await f.call("mcp__GitHub__create_repository", { name: "example" });
   f.hooks.get("session_tree")({}, f.ctx);
-  await f.mcp("GitHub", "create_repository", { name: "example" });
+  await f.call("mcp__GitHub__create_repository", { name: "example" });
   assert.equal(f.prompts(), 3);
   f.hooks.get("session_shutdown")({}, f.ctx);
-  assert.ok(!f.listeners.has(MCP_APPROVAL_EVENT));
 });
